@@ -1,0 +1,6 @@
+#!/usr/bin/env doomscript
+(defcli! emacs-mcp ()
+  (doom-modules-initialize)
+  (doom-initialize t)
+  (doom-startup)
+  (emacs-mcp-run-stdio))
