@@ -1,3 +1,6 @@
+(setq custom-safe-themes
+      '("77f281064ea1c8b14938866e21c4e51e4168e05db98863bd7430f1352cab294a" default))
+
 (setq doom-theme 'doom-moonlight)
 
 ;; Ensure `mcp.el` is correctly located in the `.doom.d` folder.
