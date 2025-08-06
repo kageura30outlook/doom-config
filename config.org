@@ -1,4 +1,4 @@
-#+TITLE: Timeless's Doom Emacs Config
+#+TITLE: My Doom Emacs Config
 #+PROPERTY: header-args :tangle config.el
 #+AUTHOR: kageura30outlook
 
@@ -6,6 +6,10 @@
 This is my literate Doom Emacs configuration.
 All code blocks here are tangled into config.el.
 
+* UI
+#+begin_src emacs-lisp
+(setq doom-theme 'doom-moonlight)
+#+end_src
 * MCP Servers
 #+begin_src emacs-lisp
 ;; Ensure `mcp.el` is correctly located in the `.doom.d` folder.
@@ -62,10 +66,6 @@ Fonts config
         "t t" #'toggle-truncate-lines)
 #+end_src
 
-* UI
-#+begin_src emacs-lisp
-(setq doom-theme 'doom-moonlight)
-#+end_src
 * Org Mode
 Set up my org directory for notes and tasks.
 
@@ -186,7 +186,6 @@ Custom keybindings for faster access.
          :key  #'gptel-api-key
          :stream t
          :models '(gpt-4o))))
-
 #+end_src
 
 * Emacs window tilling fix

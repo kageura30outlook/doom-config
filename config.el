@@ -1,3 +1,5 @@
+(setq doom-theme 'doom-moonlight)
+
 ;; Ensure `mcp.el` is correctly located in the `.doom.d` folder.
 (add-to-list 'load-path (expand-file-name "mcp.el" "~/.doom.d/"))
 
@@ -35,8 +37,6 @@
 (map! :leader
        :desc "Toggle truncate lines"
         "t t" #'toggle-truncate-lines)
-
-(setq doom-theme 'doom-moonlight)
 
 (setq org-directory "~/org-roam/"
       org-hide-emphasis-markers t)
