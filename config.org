@@ -40,8 +40,6 @@ All code blocks here are tangled into config.el.
   ;; Start all servers after Emacs initialization.
   (add-hook 'after-init-hook #'mcp-hub-start-all-server))
 #+end_src
-* MCP Servers
-#+begin_src emacs-lisp
 * Meta key setup
 #+begin_src emacs-lisp
 (setq mac-command-modifier      'super
@@ -184,13 +182,13 @@ Custom keybindings for faster access.
 #+begin_src emacs-lisp
 (use-package! gptel
   :config
-  (setq gptel-model 'gpt-4o)
+  (setq gptel-model 'o4-mini)
   (setq gptel-backend
         (gptel-make-openai
          "OpenAI"
          :key  #'gptel-api-key
          :stream t
-         :models '(gpt-4o))))
+         :models '(o4-mini))))
 #+end_src
 
 * Emacs window tilling fix
@@ -282,4 +280,3 @@ Force ivy-mode to start early
 
 The document ends with an auto-tangle function to ensure any changes made to the org file automatically update the config file used by Emacs on save. This setup automates maintaining an organized, single-source version of Emacs configurations.
 
--> Prompt: Fix the mcp area so that it is properly functional

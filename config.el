@@ -26,6 +26,12 @@
   ;; Start all servers after Emacs initialization.
   (add-hook 'after-init-hook #'mcp-hub-start-all-server))
 
+(setq mac-command-modifier      'super
+      ns-command-modifier       'super
+      mac-option-modifier       'meta
+      ns-option-modifier        'meta
+      mac-left-option-modifier 'meta)
+
 (setq doom-font (font-spec :family "SauceCodePro Nerd Font Mono" :size 15)
       doom-variable-pitch-font (font-spec :family "SauceCodePro Nerd Font Mono" :size 15)
       doom-big-font (font-spec :family "SauceCodePro Nerd Font Mono" :size 24))
@@ -112,13 +118,13 @@
 
 (use-package! gptel
   :config
-  (setq gptel-model 'gpt-4o)
+  (setq gptel-model 'o4-mini)
   (setq gptel-backend
         (gptel-make-openai
          "OpenAI"
          :key  #'gptel-api-key
          :stream t
-         :models '(gpt-4o))))
+         :models '(o4-mini))))
 
 (menu-bar-mode t)
 
