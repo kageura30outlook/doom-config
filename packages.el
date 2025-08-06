@@ -52,5 +52,3 @@
 (package! ivy)
 (package! counsel)
 (package! ivy-posframe)
-(package! modus-themes)
-

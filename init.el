@@ -193,4 +193,3 @@
        :config
        ;;literate
        (default +bindings +smartparens))
-       (load-theme 'modus-vivendi t)
