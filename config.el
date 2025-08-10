@@ -184,21 +184,6 @@
 (setq! citar-bibliography
   (list (expand-file-name "bibliography.bib" "~")))
 
-(use-package! org-roam
-  :init
-  (setq org-roam-v2-ack t)  ;; acknowledge v2
-  :custom
-  (org-roam-directory (file-truename "~/org-roam")) ;; your notes directory
-  (org-roam-completion-everywhere t)
-  :config
-  (org-roam-db-autosync-enable) ;; keeps database updated
-  (map! :leader
-        :prefix "n"
-        :desc "Find node" "r f" #'org-roam-node-find
-        :desc "Insert node" "r i" #'org-roam-node-insert
-        :desc "Show graph" "r g" #'org-roam-graph
-        :desc "Capture node" "r c" #'org-roam-capture))
-
 (defun find-file-insert (filename &optional wildcards)
   "Insert the selected file name at the current point."
   (interactive
@@ -244,9 +229,6 @@
   )
 
 (map! :leader
-      :desc "Edit config.org" "f i" #'(lambda () (interactive) (find-file "~/.doom.d/config.org")))
-
-(map! :leader
       :desc "Run GPTel" "c g" #'gptel
       :desc "GPTel menu" "m g" #'gptel-menu
       :desc "GPTel rewrite" "r g" #'gptel-rewrite
@@ -283,6 +265,22 @@
 (map! :leader
       :desc "Toggle vterm popup" "o t" #'+vterm/toggle
       :desc "Open vterm here"    "o T" #'+vterm/here)
+
+;; macOS専用設定
+(when (eq system-type 'darwin)
+  (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+  (add-to-list 'default-frame-alist '(ns-appearance . dark))
+  ;; システム依存のパス設定は環境に合わせて変更してください
+  ;; (setenv "PATH" (concat "XXX:" (getenv "PATH")))
+  ;; (add-to-list 'exec-path "XXX")
+  )
+
+;; Linux専用設定
+(when (eq system-type 'gnu/linux)
+  ;; 必要に応じてLinux専用の設定をここに追加
+  ;; 例: PostgreSQLのパス設定など
+  ;; (setenv "PATH" (concat "/usr/bin:" (getenv "PATH")))
+  )
 
 (setq gptel-api-key (getenv "OPENAI_API_KEY"))
 
