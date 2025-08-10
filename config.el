@@ -1,80 +1,343 @@
-(use-package! org
+;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+;; (add-to-list 'load-path (expand-file-name "lisp" doom-user-dir))
+(setq evil-respect-visual-line-mode t)
+
+;; Load comprehensive org-persist blocking solution
+;; IMPORTANT: Disable org-persist completely
+;; Note: Additional blocking is also done in early-init.el
+(setq org-element-cache-persistent nil)
+(setq org-persist-directory nil)
+(setq org-persist-default-directory nil)
+
+;; Block any attempts to load org-persist after startup
+(when (not (featurep 'org-persist))
+  ;; Override org-persist functions to prevent any persistence
+  (defun org-persist-write (&rest _) nil)
+  (defun org-persist-read (&rest _) nil)
+  (defun org-persist-load (&rest _) nil)
+  (defun org-persist-register (&rest _) nil)
+  (defun org-persist-unregister (&rest _) nil)
+  (defun org-persist-gc (&rest _) nil)
+  (defun org-persist-clear-storage (&rest _) nil)
+  
+  ;; Mark as provided to prevent loading
+  (provide 'org-persist))
+
+;; Additional safety for late-loading scenarios
+(with-eval-after-load 'org
+  (setq org-element-cache-persistent nil)
+  (setq org-persist-directory nil))
+
+;; Place your private configuration here! Remember, you do not need to run 'doom
+;; sync' after modifying this file!
+
+
+;; Some functionality uses this to identify you, e.g. GPG configuration, email
+;; clients, file templates and snippets. It is optional.
+
+;; There are two ways to load a theme. Both assume the theme is installed and
+;; available. You can either set `doom-theme' or manually load a theme with the
+;; `load-theme' function. This is the default:
+
+(setq doom-theme 'doom-monokai-ristretto)
+;; 設定を適用するためにテーマを再読み込み
+(when doom-theme
+  (load-theme doom-theme t))
+
+
+
+;; This determines the style of line numbers in effect. If set to `nil', line
+;; numbers are disabled. For relative line numbers, set this to `relative'.
+(setq display-line-numbers-type t)
+
+;; Ensure `mcp.el` is correctly located in the `.doom.d` folder.
+(add-to-list 'load-path (expand-file-name "mcp.el" "~/.doom.d/"))
+
+;; Load and configure MCP package.
+(use-package! mcp
+  :after gptel
+  :custom
+  (setq mcp-hub-servers
+      '(("filesystem" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-filesystem" "/Users/Kageura/Documents/")))
+        ("fetch" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-fetch")))
+        ("memory" . (:command "npx" :args ("-y" "@pulsemcp/basic-memory")))
+        ("sequencethink" . (:command "npx" :args ("-y" "@arben-adm/mcp-sequential-thinking")))
+        ("git" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-github")))
+        ("python-sdk" . (:command "python3" :args ("-m" "mcp.server.fastmcp" "--spec" "python-sdk")))
+        ("puppeteer" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-puppeteer")))
+        ("emacs" . (:command "bash" :args ("-c" "~/.config/doom/bin/doomscript ~/.config/doom/bin/emacs-mcp")))))
+
   :config
-  ;; A. 基本設定 (ファイルパス、TODOキーワード、タグ、アーカイブ)
-  ;; -----------------------------------------------------------------
-  (setq org-agenda-files '("~/org/agenda" "~/org-roam"))
+  ;; Load the MCP hub component.
+  (require 'mcp-hub)
+  ;; Start all servers after Emacs initialization.
+  (add-hook 'after-init-hook #'mcp-hub-start-all-server))
 
-  ;; Agendaビューをカレントウィンドウで開く
-  (setq org-agenda-window-setup 'current-window)
+(setq mac-command-modifier      'super
+      ns-command-modifier       'super
+      mac-option-modifier       'meta
+      ns-option-modifier        'meta
+      mac-left-option-modifier 'meta)
 
-  ;; SOMEDAY: いつかやる / WAIT: 誰かの返事待ちなど
-  (setq org-todo-keywords
-        '((sequence "TODO(t)" "PROG(p)" "WAIT(w)" "|" "DONE(d)")
-          (sequence "SOMEDAY(s)" "|" "CANCELLED(c)")))
+;;(setq doom-font (font-spec :family "SauceCodePro Nerd Font Mono" :size 15)
+;;      doom-variable-pitch-font (font-spec :family "SauceCodePro Nerd Font Mono" :size 15)
+ ;;     doom-big-font (font-spec :family "SauceCodePro Nerd Font Mono" :size 24))
+;;(after! doom-themes
+  ;(setq doom-themes-enable-bold t
+  ;      doom-themes-enable-italic t))
+;(custom-set-faces!
+ ;'(font-lock-comment-face :slant italic)
+;; '(font-lock-keyword-face :slant italic))
+ 
+;Doom:
+;;
+;; - `doom-font' -- the primary font to use
+;; - `doom-variable-pitch-font' -- a non-monospace font (where applicable)
+;; - `doom-big-font' -- used for `doom-big-font-mode'; use this for
+;;   presentations or streaming.
+;; - `doom-serif-font' -- for the `fixed-pitch-serif' face
+;;
+;; See 'C-h v doom-font' for documentation and more examples of what they
+;; accept. For example:
+;;
+;; プラットフォーム依存のフォント設定
+(cond
+ ((eq system-type 'darwin)  ; macOS
+  (let ((device-name (shell-command-to-string "sysctl -n hw.model")))
+    (cond
+     ((string-match-p "Mac15,12" device-name)
+      (setq doom-font (font-spec :family "Monaspace Argon" :size 12)))
+     (t
+      (setq doom-font (font-spec :family "Monaspace Argon" :size 14))))))
+ ((eq system-type 'gnu/linux)  ; Linux
+  (setq doom-font (font-spec :family "Source Code Pro" :size 14)))
+ (t  ; その他のシステム
+  (setq doom-font (font-spec :family "monospace" :size 14))))
+;;
+;; If you or Emacs can't find your font, use 'M-x describe-font' to look them
+;; up, `M-x eval-region' to execute elisp code, and 'M-x doom/reload-font' to
+;; refresh your font settings. If Emacs still can't find your font, it likely
+;; wasn't installed correctly. Font issues are rarely Doom issues!
 
-  (setq org-tag-persistent-alist
-        '(("@work" . ?w) ("@home" . ?h) ("@errand" . ?e)
-          ("@must" . ?m) ("@should" . ?s) ("@want" . ?t)))
+;; Japanese and symbol font support (プラットフォーム対応)
+(setq doom-symbol-font 
+  (cond
+   ((eq system-type 'darwin) (font-spec :family "Noto Sans JP"))
+   ((eq system-type 'gnu/linux) (font-spec :family "Noto Sans CJK JP"))
+   (t (font-spec :family "sans-serif"))))
 
-  (setq org-archive-location "~/Documents/org/agenda/archive/%s_archive::")
+(setq display-line-numbers-type t)  ;; Absolute line numbers
+(map! :leader
+       :desc "Toggle truncate lines"
+        "t t" #'toggle-truncate-lines)
 
-  (after! org-capture
-    (setq org-capture-templates
-          '(("t" "Task to Inbox" entry
-             (file+headline "~/Documents/org/agenda/inbox.org" "Tasks")
-             "* TODO %?")
+;; If you use `org' and don't want your org files in the default location below,
+;; change `org-directory'. It must be set before org loads!
+(setq org-directory "~/org/")
 
-            ("p" "Project Task" entry
-             (file+headline "~/Documents/org/agenda/gtd.org" "Projects")
-             "* TODO %? :@work:\nSCHEDULED: %(org-insert-time-stamp (current-time) t)\n")
+;; Source block fontification
+(setq org-src-fontify-natively t)
 
-            ("r" "Routine Task" entry
-             (file+headline "~/Documents/org/agenda/routines.org" "Routines")
-             "* TODO %? \nSCHEDULED: <> \n:PROPERTIES:\n:STYLE: habit\n:END:")
+(after! org
+  (setq org-startup-folded 'show2levels)
 
-            ("s" "Someday/Maybe" entry
-             (file+headline "~/Documents/org/agenda/someday.org" "Ideas")
-             "* SOMEDAY %?\n")
-            )))
+  (defun my/unfold-toc-section ()
+    (when (eq major-mode 'org-mode)
+      (save-excursion
+        (goto-char (point-min))
+        (when (re-search-forward "^\\*+ Table of Contents" nil t)
+          (org-show-subtree)))))
 
-  ;; 日付フォーマットと現在日時の設定
-  (setq org-agenda-start-on-weekday nil)
-  (setq org-agenda-start-day nil)
-  (setq org-agenda-skip-deadline-if-done t)
-  (setq org-agenda-skip-scheduled-if-done t)
-  (setq org-agenda-skip-timestamp-if-done t)
+  (add-hook 'org-mode-hook #'my/unfold-toc-section))
 
-  (setq org-agenda-custom-commands
-        '(("d" "⚡ Daily Dashboard"
-           ((tags-todo "+DEADLINE<=\"<today>\"|+SCHEDULED<=\"<today>\""
-                       ((org-agenda-overriding-header "🎯 Today's Focus Tasks")))))
+;; tex settings
+(setq texprogram 'dvipng)
 
-          ("w" "🔍 Weekly Review"
-           ((agenda "" ((org-agenda-span 'week)))
-            (tags-todo "/DONE"
-                       ((org-agenda-overriding-header "Inbox (to be processed)")
-                        (org-agenda-files '("~/Documents/org/agenda/inbox.org"))))
-            (tags-todo "+DEADLINE>=\"<today>\"+DEADLINE<=\"<+1w>\""
-                       ((org-agenda-overriding-header "🔥 Deadlines This Week")))
-            (tags "project"
-                  ((org-agenda-overriding-header "Project Status")))))
+(after! org
+  (setq org-html-head-include-scripts t
+        ;; xxelatex1
+        org-latex-pdf-process
+        '("lualatex -shell-escape -interaction nonstopmode -output-directory %o %f"
+          "biber %b"
+          "lualatex -shell-escape -interaction nonstopmode -output-directory %o %f"
+          "lualatex -shell-escape -interaction nonstopmode -output-directory %o %f")
+        ;; org-latex-pdf-process (list "latexmk -shell-escape -f -lualatex %f")
+        org-preview-latex-default-process 'imagexetex
+        org-export-with-toc t
+        org-export-headline-levels 4
+        org-pandoc-options '((standalone . t) (self-contained . t))
+        org-latex-create-formula-image-program texprogram
+        org-export-with-author t
+        org-export-headline-levels 1
+        org-export-with-drawers nil
+        org-export-with-email t
+        org-export-with-footnotes t
+        org-export-with-sub-superscripts nil
+        org-export-with-latex t
+        org-export-with-properties nil
+        org-export-with-smart-quotes t))
+(after! org (add-to-list 'org-latex-packages-alist '("" "mathrsfs" t)))
 
-          ("s" "💡 Someday / Maybe"
-           ((todo "SOMEDAY" ; <- SOMEDAYキーワードのタスクを全ファイルから探す
-                       ((org-agenda-overriding-header "On Hold Tasks (by Keyword)")))
-            (tags-todo "/DONE" ; <- someday.orgの中のタスクを表示する
-                       ((org-agenda-overriding-header "Idea List (in someday.org)")
-                            (org-agenda-files '("~/Documents/org/agenda/someday.org"))))))
-          ("A" "All Tasks"
-           ((todo "TODO"
-                  ((org-agenda-overriding-header "All TODO Tasks")))
-            (todo "PROG"
-                  ((org-agenda-overriding-header "In Progress")))
-            (todo "WAIT"
-                  ((org-agenda-overriding-header "Waiting for...")))))
-          ))
+;; プラットフォーム依存のbibliographyパス
+(setq! bibtex-completion-bibliography
+  (list (expand-file-name "bibliography.bib" "~")))
+(setq! citar-bibliography
+  (list (expand-file-name "bibliography.bib" "~")))
 
-  ;; キーバインド
+(use-package! org-roam
+  :init
+  (setq org-roam-v2-ack t)  ;; acknowledge v2
+  :custom
+  (org-roam-directory (file-truename "~/org-roam")) ;; your notes directory
+  (org-roam-completion-everywhere t)
+  :config
+  (org-roam-db-autosync-enable) ;; keeps database updated
   (map! :leader
-        "o a" 'org-agenda
-        "o c" 'org-capture))
+        :prefix "n"
+        :desc "Find node" "r f" #'org-roam-node-find
+        :desc "Insert node" "r i" #'org-roam-node-insert
+        :desc "Show graph" "r g" #'org-roam-graph
+        :desc "Capture node" "r c" #'org-roam-capture))
+
+(defun find-file-insert (filename &optional wildcards)
+  "Insert the selected file name at the current point."
+  (interactive
+   (find-file-read-args "Find file: "
+                        (confirm-nonexistent-file-or-buffer)))
+  (insert filename))
+
+(defun find-file-insert-relative (filename &optional wildcards)
+  "Insert the relative filename of the selected file at the current point."
+  (interactive
+   (find-file-read-args "Find file: "
+                        (confirm-nonexistent-file-or-buffer)))
+  (let* ((current-buffer (buffer-file-name (current-buffer)))
+         (directory (file-name-directory current-buffer))
+         (relative-filename (file-relative-name filename directory)))
+    (insert relative-filename)))
+
+(map! :leader
+      :desc "Insert selected file name at point" "if" #'find-file-insert
+      :desc "Insert selected file name at point" "ir" #'find-file-insert-relative)
+
+(evil-define-key 'normal peep-dired-mode-map (kbd "<SPC>") 'peep-dired-scroll-page-down
+  (kbd "C-<SPC>") 'peep-dired-scroll-page-up
+  (kbd "<backspace>") 'peep-dired-scroll-page-up
+  (kbd "j") 'peep-dired-next-file
+  (kbd "k") 'peep-dired-prev-file)
+
+(add-hook 'peep-dired-hook 'evil-normalize-keymaps)
+(setq peep-dired-ignored-extensions '("mkv" "iso" "mp4"))
+(setq peep-dired-cleanup-on-disable t)
+(setq peep-dired-enable-on-directories t)
+
+;; Add the key binding SPC d p to toggle peep-dired-mode while in dired (you can add the key binding you like)
+(map! :leader
+      (:after dired
+              (:map dired-mode-map
+               :desc "peep mode" "d p" #'peep-dired)))
+
+(use-package! dired-git-info
+  :after dired
+  :config
+  (add-hook 'dired-after-readin-hook 'dired-git-info-auto-enable)
+  )
+
+(map! :leader
+      :desc "Edit config.org" "f i" #'(lambda () (interactive) (find-file "~/.doom.d/config.org")))
+
+(map! :leader
+      :desc "Run GPTel" "c g" #'gptel
+      :desc "GPTel menu" "m g" #'gptel-menu
+      :desc "GPTel rewrite" "r g" #'gptel-rewrite
+      :desc "GPT Chat" "s g" #'gptel-send)
+
+(defun +open-vterm ()
+  "Open a new vterm in a vertical split or switch to it."
+  (interactive)
+  (if (get-buffer "*vterm*")
+      (pop-to-buffer "*vterm*")
+    (select-window (split-window-right))
+    (vterm)))
+
+(defun +vterm-switch ()
+  "Switch to the most recent vterm buffer."
+  (interactive)
+  (if-let ((buf (car (seq-filter
+                      (lambda (b) (string-match-p "\\*vterm" (buffer-name b)))
+                      (buffer-list)))))
+      (pop-to-buffer buf)
+    (message "No vterm buffer found.")))
+
+(after! vterm
+  (set-popup-rule! "*doom:vterm-popup:*"
+    :size 0.30
+    :vslot -4
+    :select t
+    :quit nil
+    :ttl 0
+    :side 'right)
+  (setq vterm-shell "/bin/zsh")
+  (setq vterm-max-scrollback 10000
+        vterm-kill-buffer-on-exit t))
+(map! :leader
+      :desc "Toggle vterm popup" "o t" #'+vterm/toggle
+      :desc "Open vterm here"    "o T" #'+vterm/here)
+
+(setq gptel-api-key (getenv "OPENAI_API_KEY"))
+
+(use-package! gptel
+  :config
+  (setq gptel-model 'o4-mini)
+  (setq gptel-backend
+        (gptel-make-openai
+         "OpenAI"
+         :key  #'gptel-api-key
+         :stream t
+         :models '(o4-mini))))
+
+(menu-bar-mode -1)
+
+(defun my/vterm-here-safe (&optional arg)
+  "Safely call +vterm/here with optional ARG to avoid wrong-args error."
+  (interactive "P")
+  (+vterm/here arg))
+
+(map! :leader
+      :desc "Toggle vterm popup"    "o t" #'+vterm/toggle
+      :desc "Open inline vterm"     "o T" #'my/vterm-here-safe
+      :desc "Open vterm & launch OpenCode" "o o"
+      (lambda ()
+        (interactive)
+        ;; open inline vterm safely
+        (my/vterm-here-safe)
+        ;; launch OpenCode CLI in that terminal buffer
+        (vterm-send-string "opencode")
+        (vterm-send-return)))
+
+(use-package! ivy-posframe
+  :after ivy
+  :init
+  (ivy-posframe-mode 1)
+  :config
+  (setq ivy-posframe-display-functions-alist
+        '((t . ivy-posframe-display-at-frame-center))) ;; Pop up at the center
+  (setq ivy-posframe-parameters
+        '((internal-border-width . 10)
+          (left-fringe . 8)
+          (right-fringe . 8)))
+  (ivy-posframe-mode 1))
+
+(after! ivy
+  (ivy-mode 1)  ;; Ensures ivy-mode is on
+  ;; Optional: recommended for performance and UX
+  (setq ivy-use-virtual-buffers t
+        ivy-count-format "(%d/%d) "
+        enable-recursive-minibuffers t))
+
+(defun config-org-auto-tangle ()
+  (when (string-equal (buffer-file-name)
+                      (expand-file-name "~/.doom.d/config.org"))
+    (org-babel-tangle)))
+
+(add-hook 'after-save-hook #'config-org-auto-tangle)

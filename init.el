@@ -67,7 +67,7 @@
        ;;word-wrap         ; soft wrapping with language-aware indent
 
        :emacs
-       (dired + peep)            ; making dired pretty [functional]
+       (dired +peep)            ; making dired pretty [functional]
        electric          ; smarter, keyword-based electric-indent
        ;;eww               ; the internet is gross
        ;;ibuffer           ; interactive buffer management
@@ -89,7 +89,7 @@
        ;;ansible
        biblio            ; Writes a PhD for you (citation needed)
        ;;collab            ; buffers with friends
-       ( debugger + lsp )          ; FIXME stepping through code, to help you add bugs
+       (debugger +lsp)          ; FIXME stepping through code, to help you add bugs
        ;;direnv
        docker
        ;;editorconfig      ; let someone else argue about tabs vs spaces
@@ -106,7 +106,7 @@
        tmux              ; an API for interacting with tmux
        tree-sitter       ; syntax and parsing, sitting in a tree...
        ;;upload            ; map local to remote projects via ssh/ftp
-	env
+
 
        :os
        (:if (featurep :system 'macos) macos)  ; improve compatibility with macOS
