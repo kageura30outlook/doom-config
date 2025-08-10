@@ -47,7 +47,59 @@
 ;; (unpin! pinned-package another-pinned-package)
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;; (unpin! t)
-(package! gptel)
+(package! org :recipe
+  (:host nil :repo "https://git.tecosaur.net/mirrors/org-mode.git" :remote "mirror" :fork
+   (:host nil :repo "https://git.tecosaur.net/tec/org-mode.git" :branch "dev" :remote "tecosaur")
+   :files
+   (:defaults "etc")
+   :build t :pre-build
+   (with-temp-file "org-version.el"
+     (require 'lisp-mnt)
+     (let
+         ((version
+           (with-temp-buffer
+             (insert-file-contents "lisp/org.el")
+             (lm-header "version")))
+          (git-version
+           (string-trim
+            (with-temp-buffer
+              (call-process "git" nil t nil "rev-parse" "--short" "HEAD")
+              (buffer-string)))))
+       (insert
+        (format "(defun org-release () \"The release version of Org.\" %S)\n" version)
+        (format "(defun org-git-version () \"The truncate git commit hash of Org mode.\" %S)\n" git-version)
+        "(provide 'org-version)\n"))))
+  :pin nil)
+
+(unpin! org)
+(package! org-ref)           ; Citations and references in org-mode
+(package! org-modern)        ; Modern styling for org-mode
+(package! org-roam)          ; Networked note-taking inspired by Roam Research
+(package! org-roam-ui)       ; Web-based UI for org-roam
+(package! sqlite3)
+
+(package! code-cells)        ; Jupyter-style code cells
+(package! ob-ipython)        ; IPython support for org-babel
+(package! pyvenv)           ; Python virtual environment management
+
+(package! dired-git-info)    ; Git information in dired
+(package! ibuffer-vc)        ; Version control info in ibuffer
+
+(package! sln-mode :recipe (:host github :repo "sensorflo/sln-mode"))
+(package! font-lock-ext :recipe (:host github :repo "sensorflo/font-lock-ext"))
+
+(package! opencl-mode :disable t)  ; Disable OpenCL mode
+
+(package! emacs-everywhere)  ; Use Emacs in any application
+(package! exwm)             ; X11 window manager
+(package! dmenu)            ; Dynamic menu integration
+
+(package! perfect-margin)    ; Automatic margins for better readability
+(package! powerthesaurus)    ; Thesaurus integration
+(package! nov)              ; EPUB reader
+
+(unpin! gptel)              ; Unpin gptel for latest updates
+(package! gptel :recipe (:nonrecursive t))
 (package! evil-tutor)
 (package! ivy)
 (package! counsel)

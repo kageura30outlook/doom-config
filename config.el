@@ -1,6 +1,3 @@
-(setq custom-safe-themes
-      '("77f281064ea1c8b14938866e21c4e51e4168e05db98863bd7430f1352cab294a" default))
-
 (setq doom-theme 'doom-moonlight)
 
 ;; Ensure `mcp.el` is correctly located in the `.doom.d` folder.
@@ -11,7 +8,7 @@
   :after gptel
   :custom
   (setq mcp-hub-servers
-      '(("filesystem" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-filesystem" "/Users/Kageura/Documents/")))
+      '(("filesystem" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-filesystem" "/Users/Kageura/")))
         ("fetch" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-fetch")))
         ("memory" . (:command "npx" :args ("-y" "@pulsemcp/basic-memory")))
         ("sequencethink" . (:command "npx" :args ("-y" "@arben-adm/mcp-sequential-thinking")))
@@ -91,6 +88,11 @@
       (pop-to-buffer buf)
     (message "No vterm buffer found.")))
 
+(after! vterm
+  (setq vterm-shell "/bin/zsh")  ;; Replace with your preferred shell
+  (setq vterm-max-scrollback 10000)
+  (setq vterm-kill-buffer-on-exit t))
+
  (after! vterm
   (set-popup-rule! "*doom:vterm-popup:*"
     :size 0.30
@@ -114,19 +116,28 @@
         (vterm-send-string "opencode")
         (vterm-send-return)))
 
-(setq gptel-api-key (getenv "OPENAI_API_KEY"))
-
 (use-package! gptel
+  :after request
   :config
-  (setq gptel-model 'o4-mini)
-  (setq gptel-backend
-        (gptel-make-openai
-         "OpenAI"
-         :key  #'gptel-api-key
-         :stream t
-         :models '(o4-mini))))
+  ;; ── API Key ────────────────────────────────────────────────────────────────
+  (setq! gptel-api-key (getenv "OPENAI_API_KEY"))
 
-(menu-bar-mode t)
+  ;; ── Default Backend ─────────────────────────────────────────────────────────
+  (setq! gptel-backend
+         (gptel-make-openai
+          :name    "OpenAI"
+          :api-key gptel-api-key
+          :model   "gpt-4"
+          :host    "https://api.openai.com"
+          :path    "/v1/chat/completions"
+          :params  '((:temperature . 0.7)
+                     (:max_tokens  . 1024))))
+
+  ;; ── Org Integration ─────────────────────────────────────────────────────────
+  (after! org
+    (setq! gptel-org-auto-set-properties t)))
+
+(menu-bar-mode nil)
 
 (defun my/vterm-here-safe (&optional arg)
   "Safely call +vterm/here with optional ARG to avoid wrong-args error."
@@ -136,14 +147,9 @@
 (map! :leader
       :desc "Toggle vterm popup"    "o t" #'+vterm/toggle
       :desc "Open inline vterm"     "o T" #'my/vterm-here-safe
-      :desc "Open vterm & launch OpenCode" "o o"
       (lambda ()
         (interactive)
-        ;; open inline vterm safely
-        (my/vterm-here-safe)
-        ;; launch OpenCode CLI in that terminal buffer
-        (vterm-send-string "opencode")
-        (vterm-send-return)))
+        (my/vterm-here-safe))
 
 (use-package! ivy-posframe
   :after ivy
@@ -156,7 +162,7 @@
         '((internal-border-width . 10)
           (left-fringe . 8)
           (right-fringe . 8)))
-  (ivy-posframe-mode 1))
+)
 
 (after! ivy
   (ivy-mode 1)  ;; Ensures ivy-mode is on

@@ -1,81 +1,224 @@
 #+TITLE: My Doom Emacs Config
-#+PROPERTY: header-args :tangle config.el
+#+PROPERTY: header-args:emacs-lisp :tangle config.el
 #+AUTHOR: kageura30outlook
 
 * Introduction
 This is my literate Doom Emacs configuration.
 All code blocks here are tangled into config.el.
 
-* custom-safe-themes
+* Basic Settings
+
 #+begin_src emacs-lisp
-(setq custom-safe-themes
-      '("77f281064ea1c8b14938866e21c4e51e4168e05db98863bd7430f1352cab294a" default))
+;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+;; (add-to-list 'load-path (expand-file-name "lisp" doom-user-dir))
+(setq evil-respect-visual-line-mode t)
+
+;; Load comprehensive org-persist blocking solution
+(load! "no-persist" doom-user-dir)
+
+;; IMPORTANT: Disable org-persist completely
+;; Note: Additional blocking is also done in early-init.el
+(setq org-element-cache-persistent nil)
+(setq org-persist-directory nil)
+(setq org-persist-default-directory nil)
+
+;; Block any attempts to load org-persist after startup
+(when (not (featurep 'org-persist))
+  ;; Override org-persist functions to prevent any persistence
+  (defun org-persist-write (&rest _) nil)
+  (defun org-persist-read (&rest _) nil)
+  (defun org-persist-load (&rest _) nil)
+  (defun org-persist-register (&rest _) nil)
+  (defun org-persist-unregister (&rest _) nil)
+  (defun org-persist-gc (&rest _) nil)
+  (defun org-persist-clear-storage (&rest _) nil)
+
+  ;; Mark as provided to prevent loading
+  (provide 'org-persist))
+
+;; Additional safety for late-loading scenarios
+(with-eval-after-load 'org
+  (setq org-element-cache-persistent nil)
+  (setq org-persist-directory nil))
+
+;; Place your private configuration here! Remember, you do not need to run 'doom
+;; sync' after modifying this file!
+
+
+;; Some functionality uses this to identify you, e.g. GPG configuration, email
+;; clients, file templates and snippets. It is optional.
 #+end_src
-* UI
+
+* Theme and UI
+
+Configure the visual appearance:
+
 #+begin_src emacs-lisp
-(setq doom-theme 'doom-moonlight)
+;; There are two ways to load a theme. Both assume the theme is installed and
+;; available. You can either set `doom-theme' or manually load a theme with the
+;; `load-theme' function. This is the default:
+
+(setq doom-theme 'doom-monokai-ristretto)
+(doom/set-frame-opacity 80)
+;; 設定を適用するためにテーマを再読み込み
+(when doom-theme
+  (load-theme doom-theme t))
+
+
+
+;; This determines the style of line numbers in effect. If set to `nil', line
+;; numbers are disabled. For relative line numbers, set this to `relative'.
+(setq display-line-numbers-type t)
 #+end_src
+
 * MCP Servers
 #+begin_src emacs-lisp
-;; Ensure `mcp.el` is correctly located in the `.doom.d` folder.
-(add-to-list 'load-path (expand-file-name "mcp.el" "~/.doom.d/"))
+;; Ensure `mcp.el` directory is correctly located in the `.doom.d/` folder.
+(add-to-list 'load-path (expand-file-name "~/.doom.d/mcp.el")) ;; If mcp.el is a directory, change accordingly
 
-;; Load and configure MCP package.
 (use-package! mcp
   :after gptel
   :custom
-  (setq mcp-hub-servers
-      '(("filesystem" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-filesystem" "/Users/Kageura/Documents/")))
-        ("fetch" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-fetch")))
-        ("memory" . (:command "npx" :args ("-y" "@pulsemcp/basic-memory")))
-        ("sequencethink" . (:command "npx" :args ("-y" "@arben-adm/mcp-sequential-thinking")))
-        ("git" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-github")))
-        ("python-sdk" . (:command "python3" :args ("-m" "mcp.server.fastmcp" "--spec" "python-sdk")))
-        ("puppeteer" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-puppeteer")))
-        ("emacs" . (:command "bash" :args ("-c" "~/.config/doom/bin/doomscript ~/.config/doom/bin/emacs-mcp")))))
+  (mcp-hub-servers
+   '(("filesystem" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-filesystem" "/Users/Kageura/")))
+     ("fetch" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-fetch")))
+     ("memory" . (:command "npx" :args ("-y" "@pulsemcp/basic-memory")))
+     ("sequencethink" . (:command "npx" :args ("-y" "@arben-adm/mcp-sequential-thinking")))
+     ("git" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-github")))
+     ("python-sdk" . (:command "python3" :args ("-m" "mcp.server.fastmcp" "--spec" "python-sdk")))
+     ("puppeteer" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-puppeteer")))
+     ("emacs" . (:command "bash" :args ("-c" "~/.config/doom/bin/doomscript ~/.config/doom/bin/emacs-mcp")))))
 
   :config
-  ;; Load the MCP hub component.
   (require 'mcp-hub)
-  ;; Start all servers after Emacs initialization.
   (add-hook 'after-init-hook #'mcp-hub-start-all-server))
 #+end_src
+
 * Meta key setup
 #+begin_src emacs-lisp
-(setq mac-command-modifier      'super
-      ns-command-modifier       'super
-      mac-option-modifier       'meta
-      ns-option-modifier        'meta
+(setq mac-command-modifier 'super
+      ns-command-modifier 'super
+      mac-option-modifier 'meta
+      ns-option-modifier 'meta
       mac-left-option-modifier 'meta)
 #+end_src
-* Fonts
-Fonts config
+
+* Font Configuration
+
+Configure fonts based on the hardware:
+
 #+begin_src emacs-lisp
-(setq doom-font (font-spec :family "SauceCodePro Nerd Font Mono" :size 15)
-      doom-variable-pitch-font (font-spec :family "SauceCodePro Nerd Font Mono" :size 15)
-      doom-big-font (font-spec :family "SauceCodePro Nerd Font Mono" :size 24))
-(after! doom-themes
-  (setq doom-themes-enable-bold t
-        doom-themes-enable-italic t))
-(custom-set-faces!
- '(font-lock-comment-face :slant italic)
- '(font-lock-keyword-face :slant italic))
+;; Doom exposes five (optional) variables for controlling fonts in Doom:
+;;
+;; - `doom-font' -- the primary font to use
+;; - `doom-variable-pitch-font' -- a non-monospace font (where applicable)
+;; - `doom-big-font' -- used for `doom-big-font-mode'; use this for
+;;   presentations or streaming.
+;; - `doom-serif-font' -- for the `fixed-pitch-serif' face
+;;
+;; See 'C-h v doom-font' for documentation and more examples of what they
+;; accept. For example:
+;;
+;; プラットフォーム依存のフォント設定
+(cond
+ ((eq system-type 'darwin)  ; macOS
+  (let ((device-name (shell-command-to-string "sysctl -n hw.model")))
+    (cond
+     ((string-match-p "Mac15,12" device-name)
+      (setq doom-font (font-spec :family "Monaspace Argon" :size 12)))
+     (t
+      (setq doom-font (font-spec :family "Monaspace Argon" :size 14))))))
+ ((eq system-type 'gnu/linux)  ; Linux
+  (setq doom-font (font-spec :family "Source Code Pro" :size 14)))
+ (t  ; その他のシステム
+  (setq doom-font (font-spec :family "monospace" :size 14))))
+;;
+;; If you or Emacs can't find your font, use 'M-x describe-font' to look them
+;; up, `M-x eval-region' to execute elisp code, and 'M-x doom/reload-font' to
+;; refresh your font settings. If Emacs still can't find your font, it likely
+;; wasn't installed correctly. Font issues are rarely Doom issues!
+
+;; Japanese and symbol font support (プラットフォーム対応)
+(setq doom-symbol-font
+  (cond
+   ((eq system-type 'darwin) (font-spec :family "Noto Sans JP"))
+   ((eq system-type 'gnu/linux) (font-spec :family "Noto Sans CJK JP"))
+   (t (font-spec :family "sans-serif"))))
 #+end_src
+
 * Lines
 #+begin_src emacs-lisp
 (setq display-line-numbers-type t)  ;; Absolute line numbers
 (map! :leader
-       :desc "Toggle truncate lines"
-        "t t" #'toggle-truncate-lines)
+      :desc "Toggle truncate lines"
+      "t t" #'toggle-truncate-lines)
 #+end_src
 
-* Org Mode
-Set up my org directory for notes and tasks.
+* Org Mode Configuration
+
+Basic org-mode setup:
 
 #+begin_src emacs-lisp
-(setq org-directory "~/org-roam/"
-      org-hide-emphasis-markers t)
+;; If you use `org' and don't want your org files in the default location below,
+;; change `org-directory'. It must be set before org loads!
+(setq org-directory "~/org/")
 
+;; Source block fontification
+(setq org-src-fontify-natively t)
+#+end_src
+
+** Org Basic Config
+
+#+begin_src emacs-lisp
+(after! org
+  (setq org-startup-folded 'show2levels)
+
+  (defun my/unfold-toc-section ()
+    (when (eq major-mode 'org-mode)
+      (save-excursion
+        (goto-char (point-min))
+        (when (re-search-forward "^\\*+ Table of Contents" nil t)
+          (org-show-subtree)))))
+
+  (add-hook 'org-mode-hook #'my/unfold-toc-section))
+#+end_src
+
+** Org Export and LaTeX
+
+#+begin_src emacs-lisp
+;; tex settings
+(setq texprogram 'dvipng)
+
+(after! org
+  (setq org-html-head-include-scripts t
+        ;; xxelatex1
+        org-latex-pdf-process
+        '("lualatex -shell-escape -interaction nonstopmode -output-directory %o %f"
+          "biber %b"
+          "lualatex -shell-escape -interaction nonstopmode -output-directory %o %f"
+          "lualatex -shell-escape -interaction nonstopmode -output-directory %o %f")
+        ;; org-latex-pdf-process (list "latexmk -shell-escape -f -lualatex %f")
+        org-preview-latex-default-process 'imagexetex
+        org-export-with-toc t
+        org-export-headline-levels 4
+        org-pandoc-options '((standalone . t) (self-contained . t))
+        org-latex-create-formula-image-program texprogram
+        org-export-with-author t
+        org-export-headline-levels 1
+        org-export-with-drawers nil
+        org-export-with-email t
+        org-export-with-footnotes t
+        org-export-with-sub-superscripts nil
+        org-export-with-latex t
+        org-export-with-properties nil
+        org-export-with-smart-quotes t))
+(after! org (add-to-list 'org-latex-packages-alist '("" "mathrsfs" t)))
+
+;; プラットフォーム依存のbibliographyパス
+(setq! bibtex-completion-bibliography
+  (list (expand-file-name "bibliography.bib" "~")))
+(setq! citar-bibliography
+  (list (expand-file-name "bibliography.bib" "~")))
 #+end_src
 
 * Org Roam V2
@@ -86,27 +229,389 @@ My knowledge management system using Org-Roam v2.
   :init
   (setq org-roam-v2-ack t)  ;; acknowledge v2
   :custom
-  (org-roam-directory (file-truename "~/org-roam")) ;; your notes directory
+  (org-roam-directory (file-truename "~/org-roam"))
   (org-roam-completion-everywhere t)
   :config
-  (org-roam-db-autosync-enable) ;; keeps database updated
+  (org-roam-db-autosync-enable)
   (map! :leader
         :prefix "n"
         :desc "Find node" "r f" #'org-roam-node-find
         :desc "Insert node" "r i" #'org-roam-node-insert
         :desc "Show graph" "r g" #'org-roam-graph
         :desc "Capture node" "r c" #'org-roam-capture))
-
 #+end_src
 
-* Keybindings
-Custom keybindings for faster access.
+* File Management
+
+** File Insertion Utilities
+
+Utilities for inserting file paths:
 
 #+begin_src emacs-lisp
-(map! :leader
-      :desc "Edit config.org" "f i" #'(lambda () (interactive) (find-file "~/.doom.d/config.org")))
+(defun find-file-insert (filename &optional wildcards)
+  "Insert the selected file name at the current point."
+  (interactive
+   (find-file-read-args "Find file: "
+                        (confirm-nonexistent-file-or-buffer)))
+  (insert filename))
 
+(defun find-file-insert-relative (filename &optional wildcards)
+  "Insert the relative filename of the selected file at the current point."
+  (interactive
+   (find-file-read-args "Find file: "
+                        (confirm-nonexistent-file-or-buffer)))
+  (let* ((current-buffer (buffer-file-name (current-buffer)))
+         (directory (file-name-directory current-buffer))
+         (relative-filename (file-relative-name filename directory)))
+    (insert relative-filename)))
+
+(map! :leader
+      :desc "Insert selected file name at point" "if" #'find-file-insert
+      :desc "Insert selected file name at point" "ir" #'find-file-insert-relative)
 #+end_src
+
+** Dired Configuration
+
+#+begin_src emacs-lisp
+(evil-define-key 'normal peep-dired-mode-map (kbd "<SPC>") 'peep-dired-scroll-page-down
+  (kbd "C-<SPC>") 'peep-dired-scroll-page-up
+  (kbd "<backspace>") 'peep-dired-scroll-page-up
+  (kbd "j") 'peep-dired-next-file
+  (kbd "k") 'peep-dired-prev-file)
+
+(add-hook 'peep-dired-hook 'evil-normalize-keymaps)
+(setq peep-dired-ignored-extensions '("mkv" "iso" "mp4"))
+(setq peep-dired-cleanup-on-disable t)
+(setq peep-dired-enable-on-directories t)
+
+;; Add the key binding SPC d p to toggle peep-dired-mode while in dired (you can add the key binding you like)
+(map! :leader
+      (:after dired
+              (:map dired-mode-map
+               :desc "peep mode" "d p" #'peep-dired)))
+
+(use-package! dired-git-info
+  :after dired
+  :config
+  (add-hook 'dired-after-readin-hook 'dired-git-info-auto-enable)
+  )
+#+end_src
+
+* Org Mode Advanced Features
+
+** Org Folding System
+
+#+begin_src emacs-lisp
+(after! org
+  (defun orgfold-get-fold-info-file-name ()
+    (concat (buffer-file-name) ".fold"))
+
+  (defun orgfold-save ()
+    (when (and (buffer-file-name)
+               (file-exists-p (orgfold-get-fold-info-file-name)))
+      (save-excursion
+        (goto-char (point-min))
+        (let (foldstates)
+          (unless (looking-at outline-regexp)
+            (outline-next-visible-heading 1))
+          (while (not (eobp))
+            (push (when (seq-some (lambda (o) (overlay-get o 'invisible))
+                                  (overlays-at (line-end-position)))
+                    t)
+                  foldstates)
+            (outline-next-visible-heading 1))
+          (with-temp-file (orgfold-get-fold-info-file-name)
+            (prin1 (nreverse foldstates) (current-buffer)))))))
+
+  (defun orgfold-restore ()
+    (when (buffer-file-name)
+      (save-excursion
+        (goto-char (point-min))
+        (let* ((foldfile (orgfold-get-fold-info-file-name))
+               (foldstates
+                (when (file-readable-p foldfile)
+                  (with-temp-buffer
+                    (insert-file-contents foldfile)
+                    (when (> (buffer-size) 0)
+                      (read (current-buffer)))))))
+          (when foldstates
+            (show-all)
+            (goto-char (point-min))
+            (unless (looking-at outline-regexp)
+              (outline-next-visible-heading 1))
+            (while (and foldstates
+                        (not (eobp)))
+              (when (pop foldstates)
+                (hide-subtree))
+              (outline-next-visible-heading 1)))))))
+
+  (defun orgfold-init ()
+    (interactive)
+    (when (buffer-file-name)
+      (save-excursion
+        (goto-char (point-min))
+        (let (foldstates)
+          (unless (looking-at outline-regexp)
+            (outline-next-visible-heading 1))
+          (while (not (eobp))
+            (push (when (seq-some (lambda (o) (overlay-get o 'invisible))
+                                  (overlays-at (line-end-position)))
+                    t)
+                  foldstates)
+            (outline-next-visible-heading 1))
+          (with-temp-file (orgfold-get-fold-info-file-name)
+            (prin1 (nreverse foldstates) (current-buffer)))))
+      (add-hook 'after-save-hook #'orgfold-save nil t)
+      (message "Fold state tracking initialized for %s" (buffer-name))))
+
+  (defun orgfold-activate ()
+    (when (and (buffer-file-name)
+               (file-exists-p (orgfold-get-fold-info-file-name)))
+      (orgfold-restore)
+      (add-hook 'after-save-hook #'orgfold-save nil t)))
+
+  ;; キーバインドの設定
+  (map! :map org-mode-map
+        :leader
+        :prefix ("m" . "org")
+        :desc "Initialize fold tracking" "f" #'orgfold-init)
+
+  (add-hook 'org-mode-hook #'orgfold-activate)
+  ;; (add-hook 'org-mode-hook #'org-modern-mode)  ; Temporarily disabled for testing
+  )
+#+end_src
+
+** Org Roam Configuration
+
+Org Roam provides a networked note-taking system inspired by Roam Research and Zettelkasten:
+
+#+begin_src emacs-lisp
+;; Org Roam - Second Brain Note Taking System
+(use-package! org-roam
+  :ensure t
+  :custom
+  (org-roam-directory "~/Documents/RoamNotes")
+  (org-roam-db-location (expand-file-name "org-roam.db" doom-cache-dir))
+  (org-roam-completion-everywhere t)
+  (org-roam-dailies-directory "daily/")
+  (org-roam-node-display-template
+   (concat "${title:*} "
+           (propertize "${tags:10}" 'face 'org-tag)))
+  :bind (("C-c n l" . org-roam-buffer-toggle)
+         ("C-c n f" . org-roam-node-find)
+         ("C-c n i" . org-roam-node-insert)
+         ("C-c n d n" . org-roam-dailies-capture-today)
+         ("C-c n d d" . org-roam-dailies-goto-today)
+         ("C-c n d Y" . org-roam-dailies-capture-yesterday)
+         ("C-c n d T" . org-roam-dailies-capture-tomorrow)
+         ("C-c n d v" . org-roam-dailies-capture-date)
+         ("C-c n d c" . org-roam-dailies-goto-date)
+         :map org-mode-map
+         ("C-M-i" . completion-at-point))
+  :config
+  (org-roam-setup)
+
+  ;; Capture templates
+  (setq org-roam-capture-templates
+        '(("d" "default" plain
+           "%?"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n#+date: %U\n#+filetags: :memo:\n\n")
+           :unnarrowed t)
+          ("l" "programming language" plain
+           "* Characteristics\n\n- Family: %?\n- Inspired by: \n\n* Reference:\n\n"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n#+filetags: :Programming:\n\n")
+           :unnarrowed t)
+          ("b" "book notes" plain
+           "\n* Source\n\nAuthor: %^{Author}\nTitle: ${title}\nYear: %^{Year}\n\n* Memos\n\n%?"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n#+filetags: :Book:\n\n")
+           :unnarrowed t)
+          ("m" "mathematical concept" plain
+           "* References\n"
+           :target (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                           "#+title: ${title}\n#+date: %U\n#+filetags: :math:memo:\n\n")
+           :unnarrowed t)
+          ("r" "research paper" plain
+           "* Bibliographic Information\n- Author: %?\n- Title: ${title}\n- Year: \n- Journal/Conference: \n- DOI/URL: \n\n* Abstract\n\n* Key Contributions\n\n* Methodology\n\n* Results\n\n* Personal Notes\n\n* Related Work\n\n* Applications\n"
+          :target (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                           "#+title: ${title}\n#+date: %U\n#+filetags: :paper:research:\n\n")
+           :unnarrowed t)
+          ("M" "MOC (Map of Content)" plain
+           "* Overview\n%?\n\n* Core Concepts\n\n* Advanced Topics\n\n* Applications\n\n* Learning Path\n\n* Resources\n"
+           :target (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                           "#+title: ${title} \n#+date: %U\n#+filetags: :MOC:\n\n")
+           :unnarrowed t)
+          ("p" "project" plain
+           "* Goals\n\n%?\n\n* Tasks\n\n** TODO Add initial tasks\n\n* Dates\n\n"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n\n#+date: %U\n#+filetags: :Project:\n\n")
+           :unnarrowed t)
+          ("s" "study project" plain
+           "* Goals\n\n%?\n\n* Tasks\n\n** TODO Add initial tasks\n\n* Dates\n\n"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n\n#+date: %U\n#+filetags: :Study:\n\n")
+           :unnarrowed t)
+          ("n" "meeting minutes" plain
+          "* Meeting Information\n- Topic: %^{Meeting Topic}\n- Start Time: %^{Start Time}\n- Attendees: %^{Attendees}\n\n* Agenda\n%?\n\n* Discussion\n\n* Checks\n** TODO\n"
+          :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n#+date: %U\n#+filetags: :minutes:\n\n")
+          :unnarrowed t)))
+
+  ;; Daily notes capture templates
+  (setq org-roam-dailies-capture-templates
+        '(("d" "default" entry "* %<%I:%M %p>: %?"
+           :if-new (file+head "%<%Y-%m-%d>.org" "#+title: %<%Y-%m-%d>\n#+filetags: :daily:\n\n"))))
+
+  ;; Quick note insertion function
+  (defun org-roam-node-insert-immediate (arg &rest args)
+    "Insert a new org-roam node without opening its buffer."
+    (interactive "P")
+    (let ((args (cons arg args))
+          (org-roam-capture-templates
+           (list (append (car org-roam-capture-templates)
+                         '(:immediate-finish t)))))
+      (apply #'org-roam-node-insert args)))
+
+  ;; Project management functions
+  (defun org-roam-filter-by-tag (tag-name)
+    "Filter org-roam nodes by tag."
+    (mapcar #'org-roam-node-file
+            (seq-filter
+             (lambda (node)
+               (member tag-name (org-roam-node-tags node)))
+             (org-roam-node-list))))
+
+  (defun org-roam-list-notes-by-tag (tag-name)
+    "List all notes with specified tag."
+    (mapcar #'org-roam-node-title
+            (seq-filter
+             (lambda (node)
+               (member tag-name (org-roam-node-tags node)))
+             (org-roam-node-list))))
+
+  ;; Key bindings for doom - 確実にorg-roamの後に設定
+  (after! org-roam
+    (map! :leader
+          :prefix ("n" . "notes")
+          :desc "Org roam buffer toggle" "l" #'org-roam-buffer-toggle
+          :desc "Find node" "f" #'org-roam-node-find
+          :desc "Insert node" "i" #'org-roam-node-insert
+          :desc "Insert node immediate" "I" #'org-roam-node-insert-immediate
+          (:prefix ("d" . "daily")
+           :desc "Capture today" "n" #'org-roam-dailies-capture-today
+           :desc "Goto today" "d" #'org-roam-dailies-goto-today
+           :desc "Capture yesterday" "Y" #'org-roam-dailies-capture-yesterday
+           :desc "Capture tomorrow" "T" #'org-roam-dailies-capture-tomorrow
+           :desc "Capture date" "v" #'org-roam-dailies-capture-date
+           :desc "Goto date" "c" #'org-roam-dailies-goto-date)))
+
+  ;; org-roamを確実に初期化
+  (add-hook 'after-init-hook #'org-roam-db-autosync-mode)
+
+  ;; org-roam autosync の強化設定
+  (setq org-roam-db-update-on-file-change t)
+
+  ;; ファイル保存時に強制同期
+  (add-hook 'after-save-hook
+            (lambda ()
+              (when (and (buffer-file-name)
+                         (string-match-p "RoamNotes" (buffer-file-name)))
+                (org-roam-db-sync))))
+
+  ;; Doom Emacsのデフォルトnotesキーバインドを無効化
+  (map! :leader
+        :prefix "n"
+        "f" nil    ; Doom デフォルトを無効化
+        "d" nil    ; Doom デフォルトを無効化
+        "l" nil)   ; Doom デフォルトを無効化
+#+end_src
+
+#+RESULTS:
+
+** Org Agenda with Roam
+
+Settings for managing my schedule and TODOs with org agenda + org-roam
+#+begin_src elisp
+(use-package! org
+  :config
+  ;; A. 基本設定 (ファイルパス、TODOキーワード、タグ、アーカイブ)
+  ;; -----------------------------------------------------------------
+  (setq org-agenda-files '("~/org/agenda" "~/org-roam"))
+
+  ;; Agendaビューをカレントウィンドウで開く
+  (setq org-agenda-window-setup 'current-window)
+
+  ;; SOMEDAY: いつかやる / WAIT: 誰かの返事待ちなど
+  (setq org-todo-keywords
+        '((sequence "TODO(t)" "PROG(p)" "WAIT(w)" "|" "DONE(d)")
+          (sequence "SOMEDAY(s)" "|" "CANCELLED(c)")))
+
+  (setq org-tag-persistent-alist
+        '(("@work" . ?w) ("@home" . ?h) ("@errand" . ?e)
+          ("@must" . ?m) ("@should" . ?s) ("@want" . ?t)))
+
+  (setq org-archive-location "~/Documents/org/agenda/archive/%s_archive::")
+
+  (after! org-capture
+    (setq org-capture-templates
+          '(("t" "Task to Inbox" entry
+             (file+headline "~/Documents/org/agenda/inbox.org" "Tasks")
+             "* TODO %?")
+
+            ("p" "Project Task" entry
+             (file+headline "~/Documents/org/agenda/gtd.org" "Projects")
+             "* TODO %? :@work:\nSCHEDULED: %(org-insert-time-stamp (current-time) t)\n")
+
+            ("r" "Routine Task" entry
+             (file+headline "~/Documents/org/agenda/routines.org" "Routines")
+             "* TODO %? \nSCHEDULED: <> \n:PROPERTIES:\n:STYLE: habit\n:END:")
+
+            ("s" "Someday/Maybe" entry
+             (file+headline "~/Documents/org/agenda/someday.org" "Ideas")
+             "* SOMEDAY %?\n")
+            )))
+
+  ;; 日付フォーマットと現在日時の設定
+  (setq org-agenda-start-on-weekday nil)
+  (setq org-agenda-start-day nil)
+  (setq org-agenda-skip-deadline-if-done t)
+  (setq org-agenda-skip-scheduled-if-done t)
+  (setq org-agenda-skip-timestamp-if-done t)
+
+  (setq org-agenda-custom-commands
+        '(("d" "⚡ Daily Dashboard"
+           ((tags-todo "+DEADLINE<=\"<today>\"|+SCHEDULED<=\"<today>\""
+                       ((org-agenda-overriding-header "🎯 Today's Focus Tasks")))))
+
+          ("w" "🔍 Weekly Review"
+           ((agenda "" ((org-agenda-span 'week)))
+            (tags-todo "/DONE"
+                       ((org-agenda-overriding-header "Inbox (to be processed)")
+                        (org-agenda-files '("~/Documents/org/agenda/inbox.org"))))
+            (tags-todo "+DEADLINE>=\"<today>\"+DEADLINE<=\"<+1w>\""
+                       ((org-agenda-overriding-header "🔥 Deadlines This Week")))
+            (tags "project"
+                  ((org-agenda-overriding-header "Project Status")))))
+
+          ("s" "💡 Someday / Maybe"
+           ((todo "SOMEDAY" ; <- SOMEDAYキーワードのタスクを全ファイルから探す
+                       ((org-agenda-overriding-header "On Hold Tasks (by Keyword)")))
+            (tags-todo "/DONE" ; <- someday.orgの中のタスクを表示する
+                       ((org-agenda-overriding-header "Idea List (in someday.org)")
+                            (org-agenda-files '("~/Documents/org/agenda/someday.org"))))))
+          ("A" "All Tasks"
+           ((todo "TODO"
+                  ((org-agenda-overriding-header "All TODO Tasks")))
+            (todo "PROG"
+                  ((org-agenda-overriding-header "In Progress")))
+            (todo "WAIT"
+                  ((org-agenda-overriding-header "Waiting for...")))))
+          ))
+
+  ;; キーバインド
+  (map! :leader
+        "o a" 'org-agenda
+        "o c" 'org-capture))
+#+end_src
+
+#+RESULTS:
+: t
 
 * GPTel Keybinds
 :PROPERTIES:
@@ -138,17 +643,40 @@ Custom keybindings for faster access.
       (pop-to-buffer buf)
     (message "No vterm buffer found.")))
 #+end_src
+
+* System Configuration
+
+** Platform Specific Settings
+
+#+begin_src emacs-lisp
+;; macOS専用設定
+(when (eq system-type 'darwin)
+  (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+  (add-to-list 'default-frame-alist '(ns-appearance . dark))
+  ;; システム依存のパス設定は環境に合わせて変更してください
+  ;; (setenv "PATH" (concat "XXX:" (getenv "PATH")))
+  ;; (add-to-list 'exec-path "XXX")
+  )
+
+;; Linux専用設定
+(when (eq system-type 'gnu/linux)
+  ;; 必要に応じてLinux専用の設定をここに追加
+  ;; 例: PostgreSQLのパス設定など
+  ;; (setenv "PATH" (concat "/usr/bin:" (getenv "PATH")))
+  )
+#+end_src
+
 * vterm
 #+begin_src emacs-lisp
 (after! vterm
   (setq vterm-shell "/bin/zsh")  ;; Replace with your preferred shell
   (setq vterm-max-scrollback 10000)
   (setq vterm-kill-buffer-on-exit t))
-#+end_src*
+#+end_src
+
 ** vterm integration
 #+begin_src emacs-lisp
-
- (after! vterm
+(after! vterm
   (set-popup-rule! "*doom:vterm-popup:*"
     :size 0.30
     :vslot -4
@@ -163,6 +691,7 @@ Custom keybindings for faster access.
       :desc "Toggle vterm popup" "o t" #'+vterm/toggle
       :desc "Open vterm here"    "o T" #'+vterm/here)
 #+end_src
+
 ** opencode with vterm
 #+begin_src emacs-lisp
 (map! :leader
@@ -174,46 +703,45 @@ Custom keybindings for faster access.
         (vterm-send-return)))
 #+end_src
 
-* Key loading
-#+begin_src emacs-lisp
-(setq gptel-api-key (getenv "OPENAI_API_KEY"))
-#+end_src
 * GPTel Setup
+:PROPERTIES:
+:tangle: config.el
+:END:
 #+begin_src emacs-lisp
 (use-package! gptel
+  :after request
   :config
-  (setq gptel-model 'o4-mini)
-  (setq gptel-backend
-        (gptel-make-openai
-         "OpenAI"
-         :key  #'gptel-api-key
-         :stream t
-         :models '(o4-mini))))
+  (setq! gptel-api-key (getenv "OPENAI_API_KEY"))
+  (setq! gptel-backend
+         (gptel-make-openai
+          :name    "OpenAI"
+          :api-key gptel-api-key
+          :model   "gpt-4"
+          :host    "https://api.openai.com"
+          :path    "/v1/chat/completions"
+          :params  '((:temperature . 0.7)
+                     (:max_tokens  . 1024))))
+  (after! org
+    (setq! gptel-org-auto-set-properties t)))
 #+end_src
 
-* Emacs window tilling fix
+* Emacs window tiling fix
 #+begin_src emacs-lisp
-(menu-bar-mode t)
+(menu-bar-mode -1)
 #+end_src
+
 * Keybinding fixes & OpenCode integration
 #+begin_src emacs-lisp
 (defun my/vterm-here-safe (&optional arg)
-  "Safely call +vterm/here with optional ARG to avoid wrong-args error."
+  "Safely call +vterm/here with optional ARG."
   (interactive "P")
   (+vterm/here arg))
 
 (map! :leader
       :desc "Toggle vterm popup"    "o t" #'+vterm/toggle
-      :desc "Open inline vterm"     "o T" #'my/vterm-here-safe
-      :desc "Open vterm & launch OpenCode" "o o"
-      (lambda ()
-        (interactive)
-        ;; open inline vterm safely
-        (my/vterm-here-safe)
-        ;; launch OpenCode CLI in that terminal buffer
-        (vterm-send-string "opencode")
-        (vterm-send-return)))
+      :desc "Open inline vterm"     "o T" #'my/vterm-here-safe)
 #+end_src
+
 * ivy-posframe config
 #+begin_src emacs-lisp
 (use-package! ivy-posframe
@@ -222,29 +750,24 @@ Custom keybindings for faster access.
   (ivy-posframe-mode 1)
   :config
   (setq ivy-posframe-display-functions-alist
-        '((t . ivy-posframe-display-at-frame-center))) ;; Pop up at the center
+        '((t . ivy-posframe-display-at-frame-center)))
   (setq ivy-posframe-parameters
         '((internal-border-width . 10)
           (left-fringe . 8)
-          (right-fringe . 8)))
-  (ivy-posframe-mode 1))
+          (right-fringe . 8))))
 #+end_src
 
 * Ivy Mode
 Force ivy-mode to start early
 #+begin_src emacs-lisp
 (after! ivy
-  (ivy-mode 1)  ;; Ensures ivy-mode is on
-  ;; Optional: recommended for performance and UX
+  (ivy-mode 1)
   (setq ivy-use-virtual-buffers t
         ivy-count-format "(%d/%d) "
         enable-recursive-minibuffers t))
 #+end_src
 
-#+RESULTS:
-
 * Auto tangle
-
 #+begin_src emacs-lisp
 (defun config-org-auto-tangle ()
   (when (string-equal (buffer-file-name)
@@ -253,30 +776,3 @@ Force ivy-mode to start early
 
 (add-hook 'after-save-hook #'config-org-auto-tangle)
 #+end_src
-
-#+RESULTS:
-| config-org-auto-tangle | doom-modeline-update-vcs | doom-modeline-update-buffer-file-name | +evil-display-vimlike-save-message-h | doom-auto-revert-buffers-h | doom-guess-mode-h |
-
-* Summary
-1. *Meta Key Setup:* Configures the meta and command key settings, primarily for Mac systems, to customize which key acts as 'super' or 'meta.'
-
-2. *Fonts:* Sets up font specifications and applies them to various components within Emacs such as comment faces and keywords.
-
-3. *UI Theme:* Configures visual themes, specifically setting the theme to 'doom-moonlight.'
-
-4. *Org Mode:* Establishes settings for using Org Mode, including the directory for org files and customization to hide emphasis markers for cleaner text.
-
-5. *Org Roam V2:* Integrates Org-Roam for knowledge management. It sets up node finding, insertion, and management wizards along with database synchronization.
-
-6. *Keybindings:* Custom keybindings are defined for quick access to frequent commands, such as opening configuration files, toggling line numbers, and interacting with vterm (a terminal emulator).
-
-7. *Vterm Configurations:* Provides commands to open, switch to, and manage vterm; configurations include setting the default shell and buffer behavior.
-
-8. *GPTel Setup:* Configures integration with GPTel for accessing OpenAI models, with keybindings to send queries or interact with the GPTel environment.
-
-9. *Auto-tangle:* A hook automatically tangles this org document into an Emacs Lisp configuration file upon saving, ensuring the latest configurations are used.
-
-10. *ivy-posframe Config:* Customizes the appearance and behavior of Ivy, a completion and narrowing framework, using the ivy-posframe package for better UI aesthetics like centered pop-ups.
-
-The document ends with an auto-tangle function to ensure any changes made to the org file automatically update the config file used by Emacs on save. This setup automates maintaining an organized, single-source version of Emacs configurations.
-
