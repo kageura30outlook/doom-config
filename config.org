@@ -10,21 +10,15 @@ All code blocks here are tangled into config.el.
 
 #+begin_src emacs-lisp
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
-;; (add-to-list 'load-path (expand-file-name "lisp" doom-user-dir))
+
 (setq evil-respect-visual-line-mode t)
 
-;; Load comprehensive org-persist blocking solution
-(load! "no-persist" doom-user-dir)
-
-;; IMPORTANT: Disable org-persist completely
-;; Note: Additional blocking is also done in early-init.el
+;; Disable org-persist completely
 (setq org-element-cache-persistent nil)
 (setq org-persist-directory nil)
 (setq org-persist-default-directory nil)
 
-;; Block any attempts to load org-persist after startup
 (when (not (featurep 'org-persist))
-  ;; Override org-persist functions to prevent any persistence
   (defun org-persist-write (&rest _) nil)
   (defun org-persist-read (&rest _) nil)
   (defun org-persist-load (&rest _) nil)
@@ -32,18 +26,14 @@ All code blocks here are tangled into config.el.
   (defun org-persist-unregister (&rest _) nil)
   (defun org-persist-gc (&rest _) nil)
   (defun org-persist-clear-storage (&rest _) nil)
-
-  ;; Mark as provided to prevent loading
   (provide 'org-persist))
 
-;; Additional safety for late-loading scenarios
 (with-eval-after-load 'org
   (setq org-element-cache-persistent nil)
   (setq org-persist-directory nil))
 
 ;; Place your private configuration here! Remember, you do not need to run 'doom
 ;; sync' after modifying this file!
-
 
 ;; Some functionality uses this to identify you, e.g. GPG configuration, email
 ;; clients, file templates and snippets. It is optional.
@@ -54,20 +44,13 @@ All code blocks here are tangled into config.el.
 Configure the visual appearance:
 
 #+begin_src emacs-lisp
-;; There are two ways to load a theme. Both assume the theme is installed and
-;; available. You can either set `doom-theme' or manually load a theme with the
-;; `load-theme' function. This is the default:
-
+;; Load Doom theme
 (setq doom-theme 'doom-monokai-ristretto)
 (doom/set-frame-opacity 80)
-;; 設定を適用するためにテーマを再読み込み
 (when doom-theme
   (load-theme doom-theme t))
 
-
-
-;; This determines the style of line numbers in effect. If set to `nil', line
-;; numbers are disabled. For relative line numbers, set this to `relative'.
+;; Line numbers style
 (setq display-line-numbers-type t)
 #+end_src
 
@@ -88,7 +71,6 @@ Configure the visual appearance:
      ("python-sdk" . (:command "python3" :args ("-m" "mcp.server.fastmcp" "--spec" "python-sdk")))
      ("puppeteer" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-puppeteer")))
      ("emacs" . (:command "bash" :args ("-c" "~/.config/doom/bin/doomscript ~/.config/doom/bin/emacs-mcp")))))
-
   :config
   (require 'mcp-hub)
   (add-hook 'after-init-hook #'mcp-hub-start-all-server))
@@ -116,9 +98,6 @@ Configure fonts based on the hardware:
 ;;   presentations or streaming.
 ;; - `doom-serif-font' -- for the `fixed-pitch-serif' face
 ;;
-;; See 'C-h v doom-font' for documentation and more examples of what they
-;; accept. For example:
-;;
 ;; プラットフォーム依存のフォント設定
 (cond
  ((eq system-type 'darwin)  ; macOS
@@ -132,11 +111,6 @@ Configure fonts based on the hardware:
   (setq doom-font (font-spec :family "Source Code Pro" :size 14)))
  (t  ; その他のシステム
   (setq doom-font (font-spec :family "monospace" :size 14))))
-;;
-;; If you or Emacs can't find your font, use 'M-x describe-font' to look them
-;; up, `M-x eval-region' to execute elisp code, and 'M-x doom/reload-font' to
-;; refresh your font settings. If Emacs still can't find your font, it likely
-;; wasn't installed correctly. Font issues are rarely Doom issues!
 
 ;; Japanese and symbol font support (プラットフォーム対応)
 (setq doom-symbol-font
@@ -148,7 +122,6 @@ Configure fonts based on the hardware:
 
 * Lines
 #+begin_src emacs-lisp
-(setq display-line-numbers-type t)  ;; Absolute line numbers
 (map! :leader
       :desc "Toggle truncate lines"
       "t t" #'toggle-truncate-lines)
@@ -522,11 +495,10 @@ Org Roam provides a networked note-taking system inspired by Roam Research and Z
         "l" nil)   ; Doom デフォルトを無効化
 #+end_src
 
-#+RESULTS:
-
-** Org Agenda with Roam
+* Org Agenda with Roam
 
 Settings for managing my schedule and TODOs with org agenda + org-roam
+
 #+begin_src elisp
 (use-package! org
   :config
@@ -609,9 +581,6 @@ Settings for managing my schedule and TODOs with org agenda + org-roam
         "o a" 'org-agenda
         "o c" 'org-capture))
 #+end_src
-
-#+RESULTS:
-: t
 
 * GPTel Keybinds
 :PROPERTIES:
@@ -774,5 +743,7 @@ Force ivy-mode to start early
                       (expand-file-name "~/.doom.d/config.org"))
     (org-babel-tangle)))
 
+;;text
 (add-hook 'after-save-hook #'config-org-auto-tangle)
 #+end_src
+
