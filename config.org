@@ -229,6 +229,326 @@ Basic org-mode setup:
   (list (expand-file-name "bibliography.bib" "~")))
 #+end_src
 
+* Org advanced settings
+** Org Agenda with Roam
+
+Settings for managing my schedule and TODOs with org agenda + org-roam
+#+begin_src elisp
+(use-package! org
+  :config
+  ;; A. 基本設定 (ファイルパス、TODOキーワード、タグ、アーカイブ)
+  ;; -----------------------------------------------------------------
+  (setq org-agenda-files '("~/org/agenda" "~/org-roam"))
+
+  ;; Agendaビューをカレントウィンドウで開く
+  (setq org-agenda-window-setup 'current-window)
+
+  ;; SOMEDAY: いつかやる / WAIT: 誰かの返事待ちなど
+  (setq org-todo-keywords
+        '((sequence "TODO(t)" "PROG(p)" "WAIT(w)" "|" "DONE(d)")
+          (sequence "SOMEDAY(s)" "|" "CANCELLED(c)")))
+
+  (setq org-tag-persistent-alist
+        '(("@work" . ?w) ("@home" . ?h) ("@errand" . ?e)
+          ("@must" . ?m) ("@should" . ?s) ("@want" . ?t)))
+
+  (setq org-archive-location "~/org/agenda/archive/%s_archive::")
+
+  (after! org-capture
+    (setq org-capture-templates
+          '(("t" "Task to Inbox" entry
+             (file+headline "~/org/agenda/inbox.org" "Tasks")
+             "* TODO %?")
+
+            ("p" "Project Task" entry
+             (file+headline "~/org/agenda/gtd.org" "Projects")
+             "* TODO %? :@work:\nSCHEDULED: %(org-insert-time-stamp (current-time) t)\n")
+
+            ("r" "Routine Task" entry
+             (file+headline "~/org/agenda/routines.org" "Routines")
+             "* TODO %? \nSCHEDULED: <> \n:PROPERTIES:\n:STYLE: habit\n:END:")
+
+            ("s" "Someday/Maybe" entry
+             (file+headline "~/org/agenda/someday.org" "Ideas")
+             "* SOMEDAY %?\n")
+            )))
+
+  ;; 日付フォーマットと現在日時の設定
+  (setq org-agenda-start-on-weekday nil)
+  (setq org-agenda-start-day nil)
+  (setq org-agenda-skip-deadline-if-done t)
+  (setq org-agenda-skip-scheduled-if-done t)
+  (setq org-agenda-skip-timestamp-if-done t)
+
+  (setq org-agenda-custom-commands
+        '(("d" "⚡ Daily Dashboard"
+           ((tags-todo "+DEADLINE<=\"<today>\"|+SCHEDULED<=\"<today>\""
+                       ((org-agenda-overriding-header "🎯 Today's Focus Tasks")))))
+
+          ("w" "🔍 Weekly Review"
+           ((agenda "" ((org-agenda-span 'week)))
+            (tags-todo "/DONE"
+                       ((org-agenda-overriding-header "Inbox (to be processed)")
+                        (org-agenda-files '("~/org/agenda/inbox.org"))))
+            (tags-todo "+DEADLINE>=\"<today>\"+DEADLINE<=\"<+1w>\""
+                       ((org-agenda-overriding-header "🔥 Deadlines This Week")))
+            (tags "project"
+                  ((org-agenda-overriding-header "Project Status")))))
+
+          ("s" "💡 Someday / Maybe"
+           ((todo "SOMEDAY" ; <- SOMEDAYキーワードのタスクを全ファイルから探す
+                       ((org-agenda-overriding-header "On Hold Tasks (by Keyword)")))
+            (tags-todo "/DONE" ; <- someday.orgの中のタスクを表示する
+                       ((org-agenda-overriding-header "Idea List (in someday.org)")
+                            (org-agenda-files '("~/org/agenda/someday.org"))))))
+          ("A" "All Tasks"
+           ((todo "TODO"
+                  ((org-agenda-overriding-header "All TODO Tasks")))
+            (todo "PROG"
+                  ((org-agenda-overriding-header "In Progress")))
+            (todo "WAIT"
+                  ((org-agenda-overriding-header "Waiting for...")))))
+          ))
+
+  ;; キーバインド
+    (after! general
+    (general-define-key
+    :states '(normal motion)
+    :keymaps 'doom-leader-map
+    "o a" (general-key-dispatch #'org-agenda
+                "a" #'org-agenda
+                "c" #'org-capture)))
+)
+#+end_src
+
+** Org Roam Configuration
+
+Org Roam provides a networked note-taking system inspired by Roam Research and Zettelkasten:
+
+#+begin_src emacs-lisp
+;; Org Roam - Second Brain Note Taking System
+(use-package! org-roam
+  :ensure t
+  :custom
+  (org-roam-directory "~/org-roam")
+  (org-roam-db-location (expand-file-name "org-roam.db" doom-cache-dir))
+  (org-roam-completion-everywhere t)
+  (org-roam-dailies-directory "daily/")
+  (org-roam-node-display-template
+   (concat "${title:*} "
+           (propertize "${tags:10}" 'face 'org-tag)))
+  :bind (("C-c n l" . org-roam-buffer-toggle)
+         ("C-c n f" . org-roam-node-find)
+         ("C-c n i" . org-roam-node-insert)
+         ("C-c n d n" . org-roam-dailies-capture-today)
+         ("C-c n d d" . org-roam-dailies-goto-today)
+         ("C-c n d Y" . org-roam-dailies-capture-yesterday)
+         ("C-c n d T" . org-roam-dailies-capture-tomorrow)
+         ("C-c n d v" . org-roam-dailies-capture-date)
+         ("C-c n d c" . org-roam-dailies-goto-date))
+  :config
+  (org-roam-setup)
+
+  ;; Capture templates
+  (setq org-roam-capture-templates
+        '(("d" "default" plain
+           "%?"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+date: %U\n#+filetags: :memo:\n\n")
+           :unnarrowed t)
+          ("l" "programming language" plain
+           "* Characteristics\n\n- Family: %?\n- Inspired by: \n\n* Reference:\n\n"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+filetags: :Programming:\n\n")
+           :unnarrowed t)
+          ("b" "book notes" plain
+           "\n* Source\n\nAuthor: %^{Author}\nTitle: ${title}\nYear: %^{Year}\n\n* Memos\n\n%?"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+filetags: :Book:\n\n")
+           :unnarrowed t)
+          ("m" "mathematical concept" plain
+           "* References\n"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+date: %U\n#+filetags: :math:memo:\n\n")
+           :unnarrowed t)
+          ("r" "research paper" plain
+           "* Bibliographic Information\n- Author: %?\n- Title: ${title}\n- Year: \n- Journal/Conference: \n- DOI/URL: \n\n* Abstract\n\n* Key Contributions\n\n* Methodology\n\n* Results\n\n* Personal Notes\n\n* Related Work\n\n* Applications\n"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+date: %U\n#+filetags: :paper:research:\n\n")
+           :unnarrowed t)
+          ("M" "MOC (Map of Content)" plain
+           "* Overview\n%?\n\n* Core Concepts\n\n* Advanced Topics\n\n* Applications\n\n* Learning Path\n\n* Resources\n"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+date: %U\n#+filetags: :MOC:\n\n")
+           :unnarrowed t)
+          ("p" "project" plain
+           "* Goals\n\n%?\n\n* Tasks\n\n** TODO Add initial tasks\n\n* Dates\n\n"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+date: %U\n#+filetags: :Project:\n\n")
+           :unnarrowed t)
+          ("s" "study project" plain
+           "* Goals\n\n%?\n\n* Tasks\n\n** TODO Add initial tasks\n\n* Dates\n\n"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+date: %U\n#+filetags: :Study:\n\n")
+           :unnarrowed t)
+          ("n" "meeting minutes" plain
+           "* Meeting Information\n- Topic: %^{Meeting Topic}\n- Start Time: %^{Start Time}\n- Attendees: %^{Attendees}\n\n* Agenda\n%?\n\n* Discussion\n\n* Checks\n** TODO\n"
+           :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+date: %U\n#+filetags: :minutes:\n\n")
+           :unnarrowed t)))
+
+  ;; Daily notes capture templates
+  (setq org-roam-dailies-capture-templates
+        '(("d" "default" entry "* %<%I:%M %p>: %?"
+           :if-new (file+head "%<%Y-%m-%d>.org"
+                              "#+title: %<%Y-%m-%d>\n#+filetags: :daily:\n\n"))))
+
+  ;; Quick note insertion function
+  (defun org-roam-node-insert-immediate (arg &rest args)
+    "Insert a new org-roam node without opening its buffer."
+    (interactive "P")
+    (let ((args (cons arg args))
+          (org-roam-capture-templates
+           (list (append (car org-roam-capture-templates)
+                         '(:immediate-finish t)))))
+      (apply #'org-roam-node-insert args)))
+
+  ;; Filter and listing functions
+  (defun org-roam-filter-by-tag (tag-name)
+    "Filter org-roam nodes by TAG-NAME."
+    (mapcar #'org-roam-node-file
+            (seq-filter
+             (lambda (node)
+               (member tag-name (org-roam-node-tags node)))
+             (org-roam-node-list))))
+
+  (defun org-roam-list-notes-by-tag (tag-name)
+    "List all notes with specified TAG-NAME."
+    (mapcar #'org-roam-node-title
+            (seq-filter
+             (lambda (node)
+               (member tag-name (org-roam-node-tags node)))
+             (org-roam-node-list))))
+
+  ;; Doom-specific keybindings
+  (after! org-roam
+    (map! :leader
+          :prefix ("n" . "notes")
+          :desc "Org roam buffer toggle" "l" #'org-roam-buffer-toggle
+          :desc "Find node" "f" #'org-roam-node-find
+          :desc "Insert node" "i" #'org-roam-node-insert
+          :desc "Insert node immediate" "I" #'org-roam-node-insert-immediate
+          (:prefix ("d" . "daily")
+           :desc "Capture today" "n" #'org-roam-dailies-capture-today
+           :desc "Goto today" "d" #'org-roam-dailies-goto-today
+           :desc "Capture yesterday" "Y" #'org-roam-dailies-capture-yesterday
+           :desc "Capture tomorrow" "T" #'org-roam-dailies-capture-tomorrow
+           :desc "Capture date" "v" #'org-roam-dailies-capture-date
+           :desc "Goto date" "c" #'org-roam-dailies-goto-date)))
+
+  ;; Init hooks
+  (add-hook 'after-init-hook #'org-roam-db-autosync-mode)
+
+  (setq org-roam-db-update-on-file-change t)
+
+  ;; Auto sync on save
+  (add-hook 'after-save-hook
+            (lambda ()
+              (when (and (buffer-file-name)
+                         (string-match-p "org-roam" (buffer-file-name)))
+                (org-roam-db-sync))))
+
+  ;; Disable Doom default notes bindings
+  (map! :leader
+        :prefix "n"
+        "f" nil
+        "d" nil
+        "l" nil))
+#+end_src
+
+** Org Folding System
+
+#+begin_src emacs-lisp
+(after! org
+  (defun orgfold-get-fold-info-file-name ()
+    (concat (buffer-file-name) ".fold"))
+
+  (defun orgfold-save ()
+    (when (and (buffer-file-name)
+               (file-exists-p (orgfold-get-fold-info-file-name)))
+      (save-excursion
+        (goto-char (point-min))
+        (let (foldstates)
+          (unless (looking-at outline-regexp)
+            (outline-next-visible-heading 1))
+          (while (not (eobp))
+            (push (when (seq-some (lambda (o) (overlay-get o 'invisible))
+                                  (overlays-at (line-end-position)))
+                    t)
+                  foldstates)
+            (outline-next-visible-heading 1))
+          (with-temp-file (orgfold-get-fold-info-file-name)
+            (prin1 (nreverse foldstates) (current-buffer)))))))
+
+  (defun orgfold-restore ()
+    (when (buffer-file-name)
+      (save-excursion
+        (goto-char (point-min))
+        (let* ((foldfile (orgfold-get-fold-info-file-name))
+               (foldstates
+                (when (file-readable-p foldfile)
+                  (with-temp-buffer
+                    (insert-file-contents foldfile)
+                    (when (> (buffer-size) 0)
+                      (read (current-buffer)))))))
+          (when foldstates
+            (show-all)
+            (goto-char (point-min))
+            (unless (looking-at outline-regexp)
+              (outline-next-visible-heading 1))
+            (while (and foldstates
+                        (not (eobp)))
+              (when (pop foldstates)
+                (hide-subtree))
+              (outline-next-visible-heading 1)))))))
+
+  (defun orgfold-init ()
+    (interactive)
+    (when (buffer-file-name)
+      (save-excursion
+        (goto-char (point-min))
+        (let (foldstates)
+          (unless (looking-at outline-regexp)
+            (outline-next-visible-heading 1))
+          (while (not (eobp))
+            (push (when (seq-some (lambda (o) (overlay-get o 'invisible))
+                                  (overlays-at (line-end-position)))
+                    t)
+                  foldstates)
+            (outline-next-visible-heading 1))
+          (with-temp-file (orgfold-get-fold-info-file-name)
+            (prin1 (nreverse foldstates) (current-buffer)))))
+      (add-hook 'after-save-hook #'orgfold-save nil t)
+      (message "Fold state tracking initialized for %s" (buffer-name))))
+
+  (defun orgfold-activate ()
+    (when (and (buffer-file-name)
+               (file-exists-p (orgfold-get-fold-info-file-name)))
+      (orgfold-restore)
+      (add-hook 'after-save-hook #'orgfold-save nil t)))
+
+  ;; キーバインドの設定
+  (map! :map org-mode-map
+        :leader
+        :prefix ("m" . "org")
+        :desc "Initialize fold tracking" "f" #'orgfold-init)
+
+  (add-hook 'org-mode-hook #'orgfold-activate)
+  ;; (add-hook 'org-mode-hook #'org-modern-mode)  ; Temporarily disabled for testing
+  )
+
+#+end_src
+
 * File Management
 
 ** File Insertion Utilities
@@ -402,6 +722,7 @@ Utilities for inserting file paths:
         (vterm-send-string "opencode")
         (vterm-send-return)))
 #+end_src
+
 * ivy-posframe config
 #+begin_src emacs-lisp
 (use-package! ivy-posframe
@@ -414,9 +735,11 @@ Utilities for inserting file paths:
   (setq ivy-posframe-parameters
         '((internal-border-width . 10)
           (left-fringe . 8)
-          (right-fringe . 8)))
-  (ivy-posframe-mode 1))
+          (right-fringe . 8))))
 #+end_src
+
+#+RESULTS:
+: t
 
 * Ivy Mode
 Force ivy-mode to start early
@@ -429,10 +752,7 @@ Force ivy-mode to start early
         enable-recursive-minibuffers t))
 #+end_src
 
-#+RESULTS:
-
 * Auto tangle
-
 #+begin_src emacs-lisp
 (defun config-org-auto-tangle ()
   (when (string-equal (buffer-file-name)
@@ -440,7 +760,5 @@ Force ivy-mode to start early
     (org-babel-tangle)))
 
 (add-hook 'after-save-hook #'config-org-auto-tangle)
-#+end_src
 
-#+RESULTS:
-| config-org-auto-tangle | doom-modeline-update-vcs | doom-modeline-update-buffer-file-name | +evil-display-vimlike-save-message-h | doom-auto-revert-buffers-h | doom-guess-mode-h |
+#+end_src
