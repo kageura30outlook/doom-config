@@ -76,7 +76,14 @@
 (package! org-modern)        ; Modern styling for org-mode
 (package! org-roam)          ; Networked note-taking inspired by Roam Research
 (package! org-roam-ui)       ; Web-based UI for org-roam
-(package! sqlite3)
+
+
+;; Bibliography/citation frontend used in config.org
+(package! citar)
+
+;; Explicitly install tree-sitter packages used in config.org
+(package! tree-sitter)
+(package! tree-sitter-langs)
 
 (package! code-cells)        ; Jupyter-style code cells
 (package! ob-ipython)        ; IPython support for org-babel
@@ -104,3 +111,8 @@
 (package! ivy)
 (package! counsel)
 (package! ivy-posframe)
+(package! doom-themes)
+(package! doom-modeline)
+(package! hide-mode-line)
+(package! org-pomodoro)
+

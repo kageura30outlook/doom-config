@@ -35,6 +35,46 @@
 ;; Some functionality uses this to identify you, e.g. GPG configuration, email
 ;; clients, file templates and snippets. It is optional.
 
+;; [[file:config.org::*Color Coding][Color Coding:1]]
+;;; Color Coding — Doom Monokai Ristretto for Python
+
+;; -------------------------
+;; Cursor Colors per Evil Mode
+;; -------------------------
+(after! evil
+  (setq evil-normal-state-cursor `(,(doom-color 'orange) box)        ;; Normal mode: pink/red box
+        evil-insert-state-cursor `(,(doom-color 'orange) bar)      ;; Insert mode: green bar
+        evil-visual-state-cursor `(,(doom-color 'green) hbar))) ;; Visual mode: purple horizontal
+;; -------------------------
+;; Python Syntax Highlighting Overrides
+;; -------------------------
+(custom-set-faces!
+  ;; Keywords: def, class, return
+  '(font-lock-keyword-face :foreground "#ff6188" :weight bold)   ;; doom-color 'red
+
+  ;; Function names
+  '(font-lock-function-name-face :foreground "#a9dc76")          ;; doom-color 'green
+
+  ;; Strings
+  '(font-lock-string-face :foreground "#ffd866")                 ;; doom-color 'yellow
+
+  ;; Builtins like print(), len()
+  '(font-lock-builtin-face :foreground "#ab9df2")                 ;; doom-color 'magenta
+
+  ;; Comments
+  '(font-lock-comment-face :foreground "#727072" :slant italic))
+
+;; -------------------------
+;; Tree-sitter for Rich Syntax Highlighting
+;; -------------------------
+(use-package! tree-sitter
+  :config
+  (global-tree-sitter-mode))
+
+(use-package! tree-sitter-langs
+  :after tree-sitter)
+;; Color Coding:1 ends here
+
 ;; There are two ways to load a theme. Both assume the theme is installed and
 ;; available. You can either set `doom-theme' or manually load a theme with the
 ;; `load-theme' function. This is the default:
@@ -50,28 +90,27 @@
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
 (setq display-line-numbers-type t)
 
-;; Ensure `mcp.el` is correctly located in the `.doom.d` folder.
-(add-to-list 'load-path (expand-file-name "mcp.el" "~/.doom.d/"))
-
-;; Load and configure MCP package.
-(use-package! mcp
-  :after gptel
-  :custom
-  (setq mcp-hub-servers
-      '(("filesystem" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-filesystem" "/Users/Kageura/Documents/")))
-        ("fetch" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-fetch")))
-        ("memory" . (:command "npx" :args ("-y" "@pulsemcp/basic-memory")))
-        ("sequencethink" . (:command "npx" :args ("-y" "@arben-adm/mcp-sequential-thinking")))
-        ("git" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-github")))
-        ("python-sdk" . (:command "python3" :args ("-m" "mcp.server.fastmcp" "--spec" "python-sdk")))
-        ("puppeteer" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-puppeteer")))
-        ("emacs" . (:command "bash" :args ("-c" "~/.config/doom/bin/doomscript ~/.config/doom/bin/emacs-mcp")))))
-
-  :config
-  ;; Load the MCP hub component.
-  (require 'mcp-hub)
-  ;; Start all servers after Emacs initialization.
-  (add-hook 'after-init-hook #'mcp-hub-start-all-server))
+;; Load and configure MCP package if available locally
+(let* ((mcp-dir (expand-file-name "~/.doom.d/"))
+       (mcp-file (expand-file-name "mcp.el" mcp-dir)))
+  (when (file-exists-p mcp-file)
+    (add-to-list 'load-path mcp-dir)
+    (use-package! mcp
+      :after gptel
+      :custom
+      (mcp-hub-servers
+       '(("filesystem" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-filesystem" "/Users/Kageura/Documents/")))
+         ("fetch" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-fetch")))
+         ("memory" . (:command "npx" :args ("-y" "@pulsemcp/basic-memory")))
+         ("sequencethink" . (:command "npx" :args ("-y" "@arben-adm/mcp-sequential-thinking")))
+         ("git" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-github")))
+         ("python-sdk" . (:command "python3" :args ("-m" "mcp.server.fastmcp" "--spec" "python-sdk")))
+         ("puppeteer" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-puppeteer")))
+         ("emacs" . (:command "bash" :args ("-c" "~/.config/doom/bin/doomscript ~/.config/doom/bin/emacs-mcp")))))
+      :config
+      ;; Load the MCP hub component only if present, then start servers
+      (when (require 'mcp-hub nil 'noerror)
+        (add-hook 'after-init-hook #'mcp-hub-start-all-server)))))
 
 (setq mac-command-modifier      'super
       ns-command-modifier       'super
@@ -374,6 +413,12 @@
                (member tag-name (org-roam-node-tags node)))
              (org-roam-node-list))))
 
+   (map! :leader
+        :prefix "n"
+        "f" nil
+        "d" nil
+        "l" nil))
+
   ;; Doom-specific keybindings
   (after! org-roam
     (map! :leader
@@ -403,11 +448,6 @@
                 (org-roam-db-sync))))
 
   ;; Disable Doom default notes bindings
-  (map! :leader
-        :prefix "n"
-        "f" nil
-        "d" nil
-        "l" nil))
 
 (after! org
   (defun orgfold-get-fold-info-file-name ()
@@ -508,16 +548,18 @@
       :desc "Insert selected file name at point" "if" #'find-file-insert
       :desc "Insert selected file name at point" "ir" #'find-file-insert-relative)
 
-(evil-define-key 'normal peep-dired-mode-map (kbd "<SPC>") 'peep-dired-scroll-page-down
-  (kbd "C-<SPC>") 'peep-dired-scroll-page-up
-  (kbd "<backspace>") 'peep-dired-scroll-page-up
-  (kbd "j") 'peep-dired-next-file
-  (kbd "k") 'peep-dired-prev-file)
+(with-eval-after-load 'peep-dired
+  (evil-define-key 'normal peep-dired-mode-map
+    (kbd "<SPC>") 'peep-dired-scroll-page-down
+    (kbd "C-<SPC>") 'peep-dired-scroll-page-up
+    (kbd "<backspace>") 'peep-dired-scroll-page-up
+    (kbd "j") 'peep-dired-next-file
+    (kbd "k") 'peep-dired-prev-file)
 
-(add-hook 'peep-dired-hook 'evil-normalize-keymaps)
-(setq peep-dired-ignored-extensions '("mkv" "iso" "mp4"))
-(setq peep-dired-cleanup-on-disable t)
-(setq peep-dired-enable-on-directories t)
+  (add-hook 'peep-dired-hook 'evil-normalize-keymaps)
+  (setq peep-dired-ignored-extensions '("mkv" "iso" "mp4"))
+  (setq peep-dired-cleanup-on-disable t)
+  (setq peep-dired-enable-on-directories t))
 
 ;; Add the key binding SPC d p to toggle peep-dired-mode while in dired (you can add the key binding you like)
 (map! :leader
@@ -553,6 +595,11 @@
                       (buffer-list)))))
       (pop-to-buffer buf)
     (message "No vterm buffer found.")))
+
+(after! vterm
+  (setq vterm-shell "/bin/zsh")  ;; Replace with your preferred shell
+  (setq vterm-max-scrollback 10000)
+  (setq vterm-kill-buffer-on-exit t))
 
 (after! vterm
   (set-popup-rule! "*doom:vterm-popup:*"
@@ -598,6 +645,16 @@
          :models '(o4-mini))))
 
 (menu-bar-mode -1)
+
+;; Work around occasional sqlite finalizer errors on GC
+;; (wrong-type-argument sqlitep nil)
+(with-eval-after-load 'sqlite
+  (defun my/sqlite-close-safely (orig connection &rest args)
+    (condition-case _
+        (when (and connection (fboundp 'sqlitep) (sqlitep connection))
+          (apply orig connection args))
+      (error nil)))
+  (advice-add 'sqlite-close :around #'my/sqlite-close-safely))
 
 (defun my/vterm-here-safe (&optional arg)
   "Safely call +vterm/here with optional ARG to avoid wrong-args error."
