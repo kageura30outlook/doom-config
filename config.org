@@ -46,6 +46,132 @@ All code blocks here are tangled into config.el.
 ;; clients, file templates and snippets. It is optional.
 #+end_src
 
+* UI
+#+begin_src emacs-lisp
+;; There are two ways to load a theme. Both assume the theme is installed and
+;; available. You can either set `doom-theme' or manually load a theme with the
+;; `load-theme' function. This is the default:
+
+(setq doom-theme 'doom-monokai-ristretto)
+;; 設定を適用するためにテーマを再読み込み
+(when doom-theme
+  (load-theme doom-theme t))
+
+
+
+;; This determines the style of line numbers in effect. If set to `nil', line
+;; numbers are disabled. For relative line numbers, set this to `relative'.
+(setq display-line-numbers-type t)
+(use-package doom-themes
+    :custom
+    (doom-themes-enable-italic t)
+    (doom-themes-enable-bold t)
+    :custom-face
+    (doom-modeline-bar ((t (:background "#6272a4"))))
+    :config
+    (doom-themes-neotree-config)
+    (doom-themes-org-config))
+
+#+end_src
+
+#+RESULTS:
+: t
+
+* UI upgrade
+:PROPERTIES:
+:header-args: :eval yes :tangle yes
+:END:
+#+begin_src emacs-lisp
+;; テーマ設定（例: doom-dracula おしゃれで人気）
+
+;; モデルライン設定
+(use-package! doom-modeline
+  :hook (after-init . doom-modeline-mode)
+  :config
+  (setq doom-modeline-height 25
+        doom-modeline-bar-width 3
+        doom-modeline-icon t
+        doom-modeline-major-mode-icon t
+        doom-modeline-minor-modes nil
+        doom-modeline-buffer-state-icon t
+        doom-modeline-buffer-modification-icon t))
+
+;; 不要なモードラインを隠す
+(use-package! hide-mode-line
+  :hook (prog-mode . hide-mode-line-mode))
+
+;; ミニマップ表示
+(use-package! minimap
+  :commands (minimap-mode)
+  :init
+  (setq minimap-window-location 'right
+        minimap-width-fraction 0.15))
+
+;; Ivy/Swiper/Counselによる検索・補完UIの強化
+(use-package! ivy
+  :diminish
+  :bind (("C-s" . swiper)
+         :map ivy-minibuffer-map
+         ("TAB" . ivy-alt-done))
+  :config
+  (ivy-mode 1)
+  (setq ivy-use-virtual-buffers t
+        ivy-count-format "(%d/%d) "
+        enable-recursive-minibuffers t))
+
+(use-package! counsel
+  :after ivy
+  :config (counsel-mode 1))
+
+(use-package! ivy-rich
+  :after ivy
+  :config (ivy-rich-mode 1))
+
+;; キーバインド表示補助 which-key
+(use-package! which-key
+  :defer 0
+  :diminish which-key-mode
+  :config (which-key-mode))
+
+;; Hydraで便利なプレフィックスメニュー
+(use-package! hydra
+  :commands hydra)
+
+;; ファイルツリー表示 neotree or treemacs
+(use-package! neotree
+  :bind ([f8] . neotree-toggle)
+  :config (setq neo-smart-open t))
+
+;; 括弧の色分け rainbow-delimiters
+(add-hook 'prog-mode-hook #'rainbow-delimiters-mode)
+
+;; インデントガイド表示
+(use-package! highlight-indent-guides
+  :hook (prog-mode . highlight-indent-guides-mode)
+  :config (setq highlight-indent-guides-method 'character))
+
+;; カーソル位置を光らせる beacon
+(use-package! beacon
+  :config (beacon-mode 1))
+
+(use-package! auto-dim-other-buffers
+  :hook (after-init . auto-dim-other-buffers-mode)
+  :config
+  (setq auto-dim-other-buffers-fraction 0.15))
+
+;; Golden Ratioでアクティブウィンドウを拡大
+(use-package! golden-ratio
+  :hook (after-init . golden-ratio-mode))
+
+;; カーソルはアクティブウィンドウのみに表示
+(setq-default cursor-in-non-selected-windows nil)
+
+;; doom-modelineの色差設定例（必要に応じてカスタム）
+(custom-set-faces!
+ '(mode-line ((t (:background "#44475a" :foreground "#f8f8f2" :box nil))))
+ '(mode-line-inactive ((t (:background "#282a36" :foreground "#6272a4" :box nil)))))
+;; カスタムフォント例（環境に合わせて変更してください）
+#+end_src
 * Color Coding
 :PROPERTIES:
 :header-args: :tangle yes :comments link
@@ -92,28 +218,8 @@ All code blocks here are tangled into config.el.
 
 #+end_src
 
-
-* UI
-#+begin_src emacs-lisp
-;; There are two ways to load a theme. Both assume the theme is installed and
-;; available. You can either set `doom-theme' or manually load a theme with the
-;; `load-theme' function. This is the default:
-
-(setq doom-theme 'doom-monokai-ristretto)
-;; 設定を適用するためにテーマを再読み込み
-(when doom-theme
-  (load-theme doom-theme t))
-
-
-
-;; This determines the style of line numbers in effect. If set to `nil', line
-;; numbers are disabled. For relative line numbers, set this to `relative'.
-(setq display-line-numbers-type t)
-
-#+end_src
-
 #+RESULTS:
-: t
+: tree-sitter-langs
 
 * MCP Servers
 #+begin_src emacs-lisp
@@ -548,12 +654,13 @@ Org Roam provides a networked note-taking system inspired by Roam Research and Z
                     (insert-file-contents foldfile)
                     (when (> (buffer-size) 0)
                       (read (current-buffer)))))))
-          (when foldstates
+          ;; Be defensive: only proceed if we read a proper list of states.
+          (when (listp foldstates)
             (show-all)
             (goto-char (point-min))
             (unless (looking-at outline-regexp)
               (outline-next-visible-heading 1))
-            (while (and foldstates
+            (while (and (consp foldstates)
                         (not (eobp)))
               (when (pop foldstates)
                 (hide-subtree))
@@ -822,3 +929,6 @@ Force ivy-mode to start early
 (add-hook 'after-save-hook #'config-org-auto-tangle)
 
 #+end_src
+
+#+RESULTS:
+| doom-modeline-update-vcs | doom-modeline-update-buffer-file-name | config-org-auto-tangle | (closure (t) nil (if (and (buffer-file-name) (string-match-p org-roam (buffer-file-name))) (progn (org-roam-db-sync)))) | +evil-display-vimlike-save-message-h | doom-auto-revert-buffers-h | doom-guess-mode-h |
