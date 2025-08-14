@@ -1,5 +1,27 @@
 ;;; init.el -*- lexical-binding: t; -*-
 
+;; Early safeguard: some packages call `seq-empty-p` on symbols (e.g. 'normal)
+;; Define a method so it won't error during early fontification or autoloads.
+(require 'cl-lib)
+(require 'seq)
+(cl-defmethod seq-empty-p ((object symbol)) t)
+
+;; Provide a conservative default for any other unexpected types
+(with-eval-after-load 'seq
+  (cl-defmethod seq-empty-p ((object t))
+    (cond
+     ((null object) t)
+     ((hash-table-p object) (= (hash-table-count object) 0))
+     ((sequencep object) (= (length object) 0))
+     (t t))))
+
+;; Also wrap as a safety net for early callers
+(defun my/seq-empty-p-safe (orig-fn object)
+  (if (or (symbolp object) (null object))
+      t
+    (funcall orig-fn object)))
+(advice-add 'seq-empty-p :around #'my/seq-empty-p-safe)
+
 ;; This file controls what Doom modules are enabled and what order they load
 ;; in. Remember to run 'doom sync' after modifying it!
 
@@ -35,13 +57,13 @@
        ;;doom-quit         ; DOOM quit-message prompts when you quit Emacs
        ;;(emoji +unicode)  ; 🙂
        hl-todo           ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
-       ;;hydra
+       hydra
        indent-guides     ; highlighted indent columns
        ;;ligatures         ; ligatures and symbols to make your code pretty again
        ;;minimap           ; show a map of the code on the side
        modeline          ; snazzy, Atom-inspired modeline, plus API
        ;;nav-flash         ; blink cursor line after big motions
-       ;;neotree           ; a project drawer, like NERDTree for vim
+       neotree           ; a project drawer, like NERDTree for vim
        ophints           ; highlight the region an operation acts on
        (popup +defaults)   ; tame sudden yet inevitable temporary windows
        ;;tabs              ; a tab bar for Emacs
@@ -59,12 +81,13 @@
        (format +onsave)  ; automated prettiness
        ;;god               ; run Emacs commands without modifier keys
        ;;lispy             ; vim for lisp, for people who don't like vim
-       ;;multiple-cursors  ; editing in many places at once
+       multiple-cursors  ; editing in many places at once
        ;;objed             ; text object editing for the innocent
        ;;parinfer          ; turn lisp into python, sort of
        ;;rotate-text       ; cycle region at point between text candidates
        snippets          ; my elves. They type so I don't have to
        ;;word-wrap         ; soft wrapping with language-aware indent
+       ;;
 
        :emacs
        (dired +peep)            ; making dired pretty [functional]

@@ -2,31 +2,24 @@
 ;; (add-to-list 'load-path (expand-file-name "lisp" doom-user-dir))
 (setq evil-respect-visual-line-mode t)
 
-;; Load comprehensive org-persist blocking solution
-;; IMPORTANT: Disable org-persist completely
-;; Note: Additional blocking is also done in early-init.el
+;; Disable org element cache persistence but keep valid directories
 (setq org-element-cache-persistent nil)
-(setq org-persist-directory nil)
-(setq org-persist-default-directory nil)
+(setq org-element-use-cache nil)
+(setq org-persist-directory (expand-file-name "org-persist/" doom-cache-dir))
+(setq org-persist-default-directory org-persist-directory)
 
-;; Block any attempts to load org-persist after startup
-(when (not (featurep 'org-persist))
-  ;; Override org-persist functions to prevent any persistence
-  (defun org-persist-write (&rest _) nil)
-  (defun org-persist-read (&rest _) nil)
-  (defun org-persist-load (&rest _) nil)
-  (defun org-persist-register (&rest _) nil)
-  (defun org-persist-unregister (&rest _) nil)
-  (defun org-persist-gc (&rest _) nil)
-  (defun org-persist-clear-storage (&rest _) nil)
-  
-  ;; Mark as provided to prevent loading
-  (provide 'org-persist))
+;; Ensure `seq-empty-p` can safely handle symbols some packages pass
+(require 'seq)
+(cl-defmethod seq-empty-p ((object symbol)) t)
 
 ;; Additional safety for late-loading scenarios
 (with-eval-after-load 'org
   (setq org-element-cache-persistent nil)
-  (setq org-persist-directory nil))
+  (setq org-element-use-cache nil)
+  (setq org-persist-directory (expand-file-name "org-persist/" doom-cache-dir))
+  (setq org-persist-default-directory org-persist-directory))
+
+
 
 ;; Place your private configuration here! Remember, you do not need to run 'doom
 ;; sync' after modifying this file!
@@ -59,8 +52,11 @@
     (doom-themes-neotree-config)
     (doom-themes-org-config))
 
-;; テーマ設定（例: doom-dracula おしゃれで人気）
-
+(use-package! doom-modeline
+  :hook (after-init . doom-modeline-mode))
+(use-package hide-mode-line
+    :hook
+    ((neotree-mode imenu-list-minor-mode minimap-mode) . hide-mode-line-mode))
 ;; モデルライン設定
 (use-package! doom-modeline
   :hook (after-init . doom-modeline-mode)
@@ -73,48 +69,7 @@
         doom-modeline-buffer-state-icon t
         doom-modeline-buffer-modification-icon t))
 
-;; 不要なモードラインを隠す
-(use-package! hide-mode-line
-  :hook (prog-mode . hide-mode-line-mode))
-
-;; ミニマップ表示
-(use-package! minimap
-  :commands (minimap-mode)
-  :init
-  (setq minimap-window-location 'right
-        minimap-width-fraction 0.15))
-
 ;; Ivy/Swiper/Counselによる検索・補完UIの強化
-(use-package! ivy
-  :diminish
-  :bind (("C-s" . swiper)
-         :map ivy-minibuffer-map
-         ("TAB" . ivy-alt-done))
-  :config
-  (ivy-mode 1)
-  (setq ivy-use-virtual-buffers t
-        ivy-count-format "(%d/%d) "
-        enable-recursive-minibuffers t))
-
-(use-package! counsel
-  :after ivy
-  :config (counsel-mode 1))
-
-(use-package! ivy-rich
-  :after ivy
-  :config (ivy-rich-mode 1))
-
-;; キーバインド表示補助 which-key
-(use-package! which-key
-  :defer 0
-  :diminish which-key-mode
-  :config (which-key-mode))
-
-;; Hydraで便利なプレフィックスメニュー
-(use-package! hydra
-  :commands hydra)
-
-;; ファイルツリー表示 neotree or treemacs
 (use-package! neotree
   :bind ([f8] . neotree-toggle)
   :config (setq neo-smart-open t))
@@ -122,32 +77,83 @@
 ;; 括弧の色分け rainbow-delimiters
 (add-hook 'prog-mode-hook #'rainbow-delimiters-mode)
 
-;; インデントガイド表示
-(use-package! highlight-indent-guides
-  :hook (prog-mode . highlight-indent-guides-mode)
-  :config (setq highlight-indent-guides-method 'character))
-
 ;; カーソル位置を光らせる beacon
 (use-package! beacon
   :config (beacon-mode 1))
+;; 非アクティブバッファを薄暗くする
+(after! doom-themes
+  (setq doom-modeline-buffer-file-name-style 'truncate-with-project))
 
-(use-package! auto-dim-other-buffers
-  :hook (after-init . auto-dim-other-buffers-mode)
+;; nyan-mode の有効化と設定
+(use-package! nyan-mode
+  :hook (doom-modeline-mode . nyan-mode)
   :config
-  (setq auto-dim-other-buffers-fraction 0.15))
+  (setq nyan-animate-nyancat t     ;; アニメーションON
+        nyan-wavy-trail nil)         ;; 波打つ虹トレイルON
+  (nyan-mode 1))
 
-;; Golden Ratioでアクティブウィンドウを拡大
-(use-package! golden-ratio
-  :hook (after-init . golden-ratio-mode))
+(after! doom-modeline
+  ;; Highlight modified buffer names in red
+  (setq doom-modeline-highlight-modified-buffer-name t)
 
-;; カーソルはアクティブウィンドウのみに表示
-(setq-default cursor-in-non-selected-windows nil)
+  ;; Make the filename very visible when modified
+  (custom-set-faces!
+    '(doom-modeline-buffer-modified
+      :foreground "red" :weight bold))
 
-;; doom-modelineの色差設定例（必要に応じてカスタム）
-(custom-set-faces!
- '(mode-line ((t (:background "#44475a" :foreground "#f8f8f2" :box nil))))
- '(mode-line-inactive ((t (:background "#282a36" :foreground "#6272a4" :box nil)))))
-;; カスタムフォント例（環境に合わせて変更してください）
+  ;; Remove modeline centering so it spans full width
+  (setq doom-modeline-bar-width 0
+        doom-modeline-hud nil
+        ;; This tells doom-modeline not to center segments
+        mode-line-format
+        '("%e"
+          (:eval
+           (doom-modeline-format--default))))
+  ;; Optional: Create a more spacious custom modeline layout
+  (doom-modeline-def-modeline 'full-width
+    '(bar buffer-info-simple buffer-position matches)
+    '(misc-info lsp debug repl major-mode vcs))
+
+  ;; Use our custom modeline everywhere
+  (defun my-enable-full-width-modeline ()
+    (doom-modeline-set-modeline 'full-width t))
+  (add-hook 'doom-modeline-mode-hook #'my-enable-full-width-modeline))
+
+;; Enable lsp-mode modeline status and diagnostics count
+
+(use-package! lsp-mode
+  :hook ((prog-mode . lsp)) ;; start lsp in programming modes automatically
+  :config
+  ;; Show lsp status in modeline
+  (setq lsp-modeline-diagnostics-enable t
+        lsp-modeline-code-actions-enable t
+        lsp-modeline-workspace-status-enable t)
+
+  ;; Optionally, customize modeline format
+  (defun my/lsp-modeline-info ()
+    "Show LSP diagnostics count and server status in modeline."
+    (when (bound-and-true-p lsp-mode)
+      (let* ((error-count (lsp-diagnostics-stats))
+             (errors (gethash "error" error-count 0))
+             (warnings (gethash "warning" error-count 0))
+             (infos (gethash "info" error-count 0))
+             (status (lsp-workspace-status-string (car (lsp-workspaces)))))
+        (format "⚠️ %d/🔶 %d/ℹ️ %d | %s" errors warnings infos (or status "Idle")))))
+
+  ;; Add the above info to doom-modeline or regular mode-line
+  (after! doom-modeline
+    (doom-modeline-def-segment my-lsp-info
+      "Show LSP error and server status info."
+      (my/lsp-modeline-info))
+
+    (doom-modeline-def-modeline 'my-lsp-modeline
+      '(bar workspace-name window-number modals matches buffer-info remote-host buffer-position parrot selection-info)
+      '(my-lsp-info vcs debug minor-modes input-method buffer-encoding major-mode process checker))
+
+    (defun my/setup-custom-doom-modeline ()
+      (doom-modeline-set-modeline 'my-lsp-modeline 'default))
+
+    (add-hook 'doom-modeline-mode-hook #'my/setup-custom-doom-modeline)))
 
 ;; [[file:config.org::*Color Coding][Color Coding:1]]
 ;;; Color Coding — Doom Monokai Ristretto for Python
@@ -215,7 +221,10 @@
       ns-command-modifier       'super
       mac-option-modifier       'meta
       ns-option-modifier        'meta
-      mac-left-option-modifier 'meta)
+      mac-left-option-modifier  'meta
+      mac-right-option-modifier 'meta
+      ns-right-option-modifier  'meta
+      ns-left-option-modifier  'meta)
 
 ;;(setq doom-font (font-spec :family "SauceCodePro Nerd Font Mono" :size 15)
 ;;      doom-variable-pitch-font (font-spec :family "SauceCodePro Nerd Font Mono" :size 15)
@@ -326,7 +335,7 @@
   :config
   ;; A. 基本設定 (ファイルパス、TODOキーワード、タグ、アーカイブ)
   ;; -----------------------------------------------------------------
-  (setq org-agenda-files '("~/org/agenda" "~/org-roam"))
+  (setq org-agenda-files '("~/org/agenda" "~/org/roam"))
 
   ;; Agendaビューをカレントウィンドウで開く
   (setq org-agenda-window-setup 'current-window)
@@ -406,13 +415,199 @@
     "o a" (general-key-dispatch #'org-agenda
                 "a" #'org-agenda
                 "c" #'org-capture)))
+
+  ;; Enhanced Org Agenda Shortcuts and Keybindings
+  (after! org-agenda
+    ;; Quick agenda views with single keypress
+    (define-key org-agenda-mode-map "a" #'org-agenda)
+    (define-key org-agenda-mode-map "d" #'org-agenda-day-view)
+    (define-key org-agenda-mode-map "w" #'org-agenda-week-view)
+    (define-key org-agenda-mode-map "m" #'org-agenda-month-view)
+    (define-key org-agenda-mode-map "y" #'org-agenda-year-view)
+    
+    ;; Task management shortcuts
+    (define-key org-agenda-mode-map "t" #'org-agenda-todo)
+    (define-key org-agenda-mode-map "n" #'org-agenda-next-line)
+    (define-key org-agenda-mode-map "p" #'org-agenda-previous-line)
+    (define-key org-agenda-mode-map (kbd "SPC") #'org-agenda-goto)
+    (define-key org-agenda-mode-map (kbd "RET") #'org-agenda-goto)
+    
+    ;; Quick task state changes
+    (define-key org-agenda-mode-map "1" (lambda () (interactive) (org-agenda-todo "TODO")))
+    (define-key org-agenda-mode-map "2" (lambda () (interactive) (org-agenda-todo "PROG")))
+    (define-key org-agenda-mode-map "3" (lambda () (interactive) (org-agenda-todo "WAIT")))
+    (define-key org-agenda-mode-map "4" (lambda () (interactive) (org-agenda-todo "DONE")))
+    (define-key org-agenda-mode-map "5" (lambda () (interactive) (org-agenda-todo "SOMEDAY")))
+    
+    ;; Date and scheduling shortcuts
+    (define-key org-agenda-mode-map "s" #'org-agenda-schedule)
+    (define-key org-agenda-mode-map "S" #'org-agenda-schedule)
+    (define-key org-agenda-mode-map "d" #'org-agenda-deadline)
+    (define-key org-agenda-mode-map "D" #'org-agenda-deadline)
+    
+    ;; Priority shortcuts
+    (define-key org-agenda-mode-map "P" #'org-agenda-priority-up)
+    (define-key org-agenda-mode-map "p" #'org-agenda-priority-down)
+    
+    ;; Tag management
+    (define-key org-agenda-mode-map "T" #'org-agenda-set-tags)
+    (define-key org-agenda-mode-map "t" #'org-agenda-todo)
+    
+    ;; View and filter shortcuts
+    (define-key org-agenda-mode-map "f" #'org-agenda-filter-by-tag)
+    (define-key org-agenda-mode-map "F" #'org-agenda-filter-remove-all)
+    (define-key org-agenda-mode-map "v" #'org-agenda-view-mode-dispatch)
+    
+    ;; Quick navigation
+    (define-key org-agenda-mode-map "g" #'org-agenda-goto-date)
+    (define-key org-agenda-mode-map "G" #'org-agenda-goto-today)
+    (define-key org-agenda-mode-map "j" #'org-agenda-next-line)
+    (define-key org-agenda-mode-map "k" #'org-agenda-previous-line)
+    
+    ;; File operations
+    (define-key org-agenda-mode-map "o" #'org-agenda-open-link)
+    (define-key org-agenda-mode-map "O" #'org-agenda-open-link)
+    
+    ;; Clock and time tracking
+    (define-key org-agenda-mode-map "I" #'org-agenda-clock-in)
+    (define-key org-agenda-mode-map "O" #'org-agenda-clock-out)
+    (define-key org-agenda-mode-map "C" #'org-agenda-clock-cancel)
+    
+    ;; Archive and refile
+    (define-key org-agenda-mode-map "A" #'org-agenda-archive)
+    (define-key org-agenda-mode-map "r" #'org-agenda-refile)
+    
+    ;; Export and sharing
+    (define-key org-agenda-mode-map "e" #'org-agenda-export)
+    (define-key org-agenda-mode-map "E" #'org-agenda-export)
+    
+    ;; Help and info
+    (define-key org-agenda-mode-map "?" #'org-agenda-help)
+    (define-key org-agenda-mode-map "h" #'org-agenda-help))
+
+  ;; Global shortcuts for quick access
+  (after! general
+    (general-define-key
+     :states '(normal motion)
+     :keymaps 'doom-leader-map
+     ;; Quick agenda access
+     "o a" (general-key-dispatch #'org-agenda
+                                 "a" #'org-agenda
+                                 "d" #'org-agenda-day-view
+                                 "w" #'org-agenda-week-view
+                                 "m" #'org-agenda-month-view
+                                 "t" #'org-agenda-todo
+                                 "c" #'org-capture
+                                 "i" #'org-agenda-inbox
+                                 "p" #'org-agenda-projects
+                                 "r" #'org-agenda-routines
+                                 "s" #'org-agenda-someday)
+     
+     ;; Quick capture shortcuts
+     "X" #'org-capture
+     "X i" (lambda () (interactive) (org-capture nil "i"))
+     "X p" (lambda () (interactive) (org-capture nil "p"))
+     "X r" (lambda () (interactive) (org-capture nil "r"))
+     "X s" (lambda () (interactive) (org-capture nil "s"))
+     
+     ;; Quick file access
+     "o i" (lambda () (interactive) (find-file "~/org/agenda/inbox.org"))
+     "o p" (lambda () (interactive) (find-file "~/org/agenda/gtd.org"))
+     "o r" (lambda () (interactive) (find-file "~/org/agenda/routines.org"))
+     "o s" (lambda () (interactive) (find-file "~/org/agenda/someday.org"))
+     "o n" (lambda () (interactive) (find-file "~/org/index.org"))))
+
+  ;; Custom agenda commands with shortcuts
+  (after! org
+    (setq org-agenda-custom-commands
+          '(("d" "⚡ Daily Dashboard"
+             ((tags-todo "+DEADLINE<=\"<today>\"|+SCHEDULED<=\"<today>\""
+                         ((org-agenda-overriding-header "🎯 Today's Focus Tasks")))))
+
+            ("w" "🔍 Weekly Review"
+             ((agenda "" ((org-agenda-span 'week)))
+              (tags-todo "/DONE"
+                         ((org-agenda-overriding-header "Inbox (to be processed)")
+                          (org-agenda-files '("~/org/agenda/inbox.org"))))
+              (tags-todo "+DEADLINE>=\"<today>\"+DEADLINE<=\"<+1w>\""
+                         ((org-agenda-overriding-header "🔥 Deadlines This Week")))
+              (tags "project"
+                    ((org-agenda-overriding-header "Project Status")))))
+
+            ("s" "💡 Someday / Maybe"
+             ((todo "SOMEDAY"
+                    ((org-agenda-overriding-header "On Hold Tasks (by Keyword)")))
+              (tags-todo "/DONE"
+                         ((org-agenda-overriding-header "Idea List (in someday.org)")
+                          (org-agenda-files '("~/org/agenda/someday.org"))))))
+
+            ("A" "All Tasks"
+             ((todo "TODO"
+                    ((org-agenda-overriding-header "All TODO Tasks")))
+              (todo "PROG"
+                    ((org-agenda-overriding-header "In Progress")))
+              (todo "WAIT"
+                    ((org-agenda-overriding-header "Waiting for...")))))
+
+            ;; New quick access commands
+            ("i" "📥 Inbox"
+             ((tags-todo "/DONE"
+                         ((org-agenda-overriding-header "Inbox Tasks")
+                          (org-agenda-files '("~/org/agenda/inbox.org"))))))
+
+            ("p" "🎯 Projects"
+             ((tags-todo "/DONE"
+                         ((org-agenda-overriding-header "Active Projects")
+                          (org-agenda-files '("~/org/agenda/gtd.org"))))))
+
+            ("r" "🔄 Routines"
+             ((tags-todo "/DONE"
+                         ((org-agenda-overriding-header "Daily & Weekly Routines")
+                          (org-agenda-files '("~/org/agenda/routines.org"))))))
+
+            ("s" "💭 Someday"
+             ((tags-todo "/DONE"
+                         ((org-agenda-overriding-header "Someday/Maybe Ideas")
+                          (org-agenda-files '("~/org/agenda/someday.org")))))))))
+
+  ;; Helper functions for quick agenda access
+  (defun org-agenda-inbox ()
+    "Quick access to inbox agenda view"
+    (interactive)
+    (org-agenda nil "i"))
+
+  (defun org-agenda-projects ()
+    "Quick access to projects agenda view"
+    (interactive)
+    (org-agenda nil "p"))
+
+  (defun org-agenda-routines ()
+    "Quick access to routines agenda view"
+    (interactive)
+    (org-agenda nil "r"))
+
+  (defun org-agenda-someday ()
+    "Quick access to someday/maybe agenda view"
+    (interactive)
+    (org-agenda nil "s"))
+
+  ;; Quick task state cycling
+  (defun org-agenda-quick-todo ()
+    "Quickly cycle through TODO states in agenda"
+    (interactive)
+    (let ((states '("TODO" "PROG" "WAIT" "DONE" "SOMEDAY")))
+      (org-agenda-todo (nth (mod (1+ (or (cl-position (org-get-todo-state) states :test 'equal) -1)) (length states)) states))))
+
+  ;; Add quick todo cycling to agenda
+  (after! org-agenda
+    (define-key org-agenda-mode-map "q" #'org-agenda-quick-todo))
 )
 
 ;; Org Roam - Second Brain Note Taking System
 (use-package! org-roam
   :ensure t
   :custom
-  (org-roam-directory "~/org-roam")
+  (org-roam-directory "~/org/roam")
   (org-roam-db-location (expand-file-name "org-roam.db" doom-cache-dir))
   (org-roam-completion-everywhere t)
   (org-roam-dailies-directory "daily/")
@@ -590,7 +785,7 @@
                         (not (eobp)))
               (when (pop foldstates)
                 (hide-subtree))
-              (outline-next-visible-heading 1))))))
+              (outline-next-visible-heading 1)))))))
 
   (defun orgfold-init ()
     (interactive)
@@ -672,6 +867,23 @@
   :config
   (add-hook 'dired-after-readin-hook 'dired-git-info-auto-enable)
   )
+
+;; macOS Dired: prefer GNU ls (gls); otherwise disable --dired
+(after! dired
+  (when (eq system-type 'darwin)
+    (require 'seq)
+    (let* ((gls-candidates (list (executable-find "gls")
+                                 "/opt/homebrew/bin/gls"
+                                 "/usr/local/bin/gls"))
+           (gls (seq-find (lambda (p) (and p (file-executable-p p))) gls-candidates)))
+      (if gls
+          (progn
+            (setq insert-directory-program gls
+                  dired-use-ls-dired t
+                  dired-listing-switches "-Ahl --group-directories-first --time-style=long-iso"))
+        ;; Fallback to BSD ls without --dired to avoid warnings
+        (setq dired-use-ls-dired nil
+              dired-listing-switches "-Ahl")))))
 
 (map! :leader
       :desc "Run GPTel" "c g" #'gptel
