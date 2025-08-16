@@ -1,4 +1,4 @@
-;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 ;; (add-to-list 'load-path (expand-file-name "lisp" doom-user-dir))
 (setq evil-respect-visual-line-mode t)
 
@@ -7,10 +7,6 @@
 (setq org-element-use-cache nil)
 (setq org-persist-directory (expand-file-name "org-persist/" doom-cache-dir))
 (setq org-persist-default-directory org-persist-directory)
-
-;; Ensure `seq-empty-p` can safely handle symbols some packages pass
-(require 'seq)
-(cl-defmethod seq-empty-p ((object symbol)) t)
 
 ;; Additional safety for late-loading scenarios
 (with-eval-after-load 'org
@@ -54,8 +50,7 @@
 
 (use-package! doom-modeline
   :hook (after-init . doom-modeline-mode))
-(use-package hide-mode-line
-    :hook
+(use-package hide-mode-line :hook
     ((neotree-mode imenu-list-minor-mode minimap-mode) . hide-mode-line-mode))
 ;; モデルライン設定
 (use-package! doom-modeline
@@ -119,44 +114,50 @@
     (doom-modeline-set-modeline 'full-width t))
   (add-hook 'doom-modeline-mode-hook #'my-enable-full-width-modeline))
 
-;; Enable lsp-mode modeline status and diagnostics count
+(map! :leader
+      :desc "Org Pomodoro" "o P" #'org-pomodoro)
 
-(use-package! lsp-mode
-  :hook ((prog-mode . lsp)) ;; start lsp in programming modes automatically
+(after! org-agenda
+  ;; Set the grid layout
+  (setq org-agenda-time-grid
+        '((daily today)
+          (800 1000 1200 1400 1600 1800 2000)
+          " ┄┄┄┄┄┄┄┄┄┄┄┄ "
+          "┄┄┄┄┄┄┄┄┄┄┄┄"))
+  (custom-set-faces!
+    '(org-agenda-grid :foreground "dim gray" :slant normal)))
+
+(use-package! which-key
+  :defer 1
   :config
-  ;; Show lsp status in modeline
-  (setq lsp-modeline-diagnostics-enable t
-        lsp-modeline-code-actions-enable t
-        lsp-modeline-workspace-status-enable t)
+  (which-key-mode)
+  (setq which-key-idle-delay 0.3
+        which-key-max-description-length 40
+        which-key-side-window-max-height 0.25
+        which-key-sort-order 'which-key-key-order-alpha
+        which-key-popup-type 'side-window))
 
-  ;; Optionally, customize modeline format
-  (defun my/lsp-modeline-info ()
-    "Show LSP diagnostics count and server status in modeline."
-    (when (bound-and-true-p lsp-mode)
-      (let* ((error-count (lsp-diagnostics-stats))
-             (errors (gethash "error" error-count 0))
-             (warnings (gethash "warning" error-count 0))
-             (infos (gethash "info" error-count 0))
-             (status (lsp-workspace-status-string (car (lsp-workspaces)))))
-        (format "⚠️ %d/🔶 %d/ℹ️ %d | %s" errors warnings infos (or status "Idle")))))
+(defhydra hydra-window (:hint nil)
+  "
+Window Management:
+_n_: next window    _p_: previous window
+_v_: split vertical _s_: split horizontal
+_d_: delete window  _m_: maximize window
+_q_: quit
+"
+  ("n" other-window)
+  ("p" (other-window -1))
+  ("v" split-window-right)
+  ("s" split-window-below)
+  ("d" delete-window)
+  ("m" delete-other-windows)
+  ("q" nil :exit t))
 
-  ;; Add the above info to doom-modeline or regular mode-line
-  (after! doom-modeline
-    (doom-modeline-def-segment my-lsp-info
-      "Show LSP error and server status info."
-      (my/lsp-modeline-info))
-
-    (doom-modeline-def-modeline 'my-lsp-modeline
-      '(bar workspace-name window-number modals matches buffer-info remote-host buffer-position parrot selection-info)
-      '(my-lsp-info vcs debug minor-modes input-method buffer-encoding major-mode process checker))
-
-    (defun my/setup-custom-doom-modeline ()
-      (doom-modeline-set-modeline 'my-lsp-modeline 'default))
-
-    (add-hook 'doom-modeline-mode-hook #'my/setup-custom-doom-modeline)))
+(map! :leader
+      :desc "Window Hydra" "w" #'hydra-window/body)
 
 ;; [[file:config.org::*Color Coding][Color Coding:1]]
-;;; Color Coding — Doom Monokai Ristretto for Python
+; Color Coding — Doom Monokai Ristretto for Python
 
 ;; -------------------------
 ;; Cursor Colors per Evil Mode
@@ -278,12 +279,7 @@
        :desc "Toggle truncate lines"
         "t t" #'toggle-truncate-lines)
 
-;; If you use `org' and don't want your org files in the default location below,
-;; change `org-directory'. It must be set before org loads!
 (setq org-directory "~/org/")
-
-;; Source block fontification
-(setq org-src-fontify-natively t)
 
 (after! org
   (setq org-startup-folded 'show2levels)
@@ -330,6 +326,21 @@
   (list (expand-file-name "bibliography.bib" "~")))
 (setq! citar-bibliography
   (list (expand-file-name "bibliography.bib" "~")))
+
+(use-package! org-bullets
+  :hook (org-mode . org-bullets-mode)
+  :config
+  (setq org-bullets-bullet-list '("◉" "◎" "⚬" "•" "‣" "⁖"))
+
+  ;; Match bullets to heading colors from doom-monokai-ristretto
+  (custom-set-faces
+   '(org-level-1 ((t (:inherit outline-1 :height 1.3 :foreground "#FFD866"))))
+   '(org-level-2 ((t (:inherit outline-2 :height 1.2 :foreground "#FC9867"))))
+   '(org-level-3 ((t (:inherit outline-3 :height 1.15 :foreground "#A9DC76"))))
+   '(org-level-4 ((t (:inherit outline-4 :height 1.1 :foreground "#78DCE8"))))
+   '(org-level-5 ((t (:inherit outline-5 :height 1.05 :foreground "#AB9DF2"))))
+   '(org-level-6 ((t (:inherit outline-6 :height 1.0  :foreground "#FF6188"))))))
+
 
 (use-package! org
   :config
@@ -424,63 +435,63 @@
     (define-key org-agenda-mode-map "w" #'org-agenda-week-view)
     (define-key org-agenda-mode-map "m" #'org-agenda-month-view)
     (define-key org-agenda-mode-map "y" #'org-agenda-year-view)
-    
+
     ;; Task management shortcuts
     (define-key org-agenda-mode-map "t" #'org-agenda-todo)
     (define-key org-agenda-mode-map "n" #'org-agenda-next-line)
     (define-key org-agenda-mode-map "p" #'org-agenda-previous-line)
     (define-key org-agenda-mode-map (kbd "SPC") #'org-agenda-goto)
     (define-key org-agenda-mode-map (kbd "RET") #'org-agenda-goto)
-    
+
     ;; Quick task state changes
     (define-key org-agenda-mode-map "1" (lambda () (interactive) (org-agenda-todo "TODO")))
     (define-key org-agenda-mode-map "2" (lambda () (interactive) (org-agenda-todo "PROG")))
     (define-key org-agenda-mode-map "3" (lambda () (interactive) (org-agenda-todo "WAIT")))
     (define-key org-agenda-mode-map "4" (lambda () (interactive) (org-agenda-todo "DONE")))
     (define-key org-agenda-mode-map "5" (lambda () (interactive) (org-agenda-todo "SOMEDAY")))
-    
+
     ;; Date and scheduling shortcuts
     (define-key org-agenda-mode-map "s" #'org-agenda-schedule)
     (define-key org-agenda-mode-map "S" #'org-agenda-schedule)
     (define-key org-agenda-mode-map "d" #'org-agenda-deadline)
     (define-key org-agenda-mode-map "D" #'org-agenda-deadline)
-    
+
     ;; Priority shortcuts
     (define-key org-agenda-mode-map "P" #'org-agenda-priority-up)
     (define-key org-agenda-mode-map "p" #'org-agenda-priority-down)
-    
+
     ;; Tag management
     (define-key org-agenda-mode-map "T" #'org-agenda-set-tags)
     (define-key org-agenda-mode-map "t" #'org-agenda-todo)
-    
+
     ;; View and filter shortcuts
     (define-key org-agenda-mode-map "f" #'org-agenda-filter-by-tag)
     (define-key org-agenda-mode-map "F" #'org-agenda-filter-remove-all)
     (define-key org-agenda-mode-map "v" #'org-agenda-view-mode-dispatch)
-    
+
     ;; Quick navigation
     (define-key org-agenda-mode-map "g" #'org-agenda-goto-date)
     (define-key org-agenda-mode-map "G" #'org-agenda-goto-today)
     (define-key org-agenda-mode-map "j" #'org-agenda-next-line)
     (define-key org-agenda-mode-map "k" #'org-agenda-previous-line)
-    
+
     ;; File operations
     (define-key org-agenda-mode-map "o" #'org-agenda-open-link)
     (define-key org-agenda-mode-map "O" #'org-agenda-open-link)
-    
+
     ;; Clock and time tracking
     (define-key org-agenda-mode-map "I" #'org-agenda-clock-in)
     (define-key org-agenda-mode-map "O" #'org-agenda-clock-out)
     (define-key org-agenda-mode-map "C" #'org-agenda-clock-cancel)
-    
+
     ;; Archive and refile
     (define-key org-agenda-mode-map "A" #'org-agenda-archive)
     (define-key org-agenda-mode-map "r" #'org-agenda-refile)
-    
+
     ;; Export and sharing
     (define-key org-agenda-mode-map "e" #'org-agenda-export)
     (define-key org-agenda-mode-map "E" #'org-agenda-export)
-    
+
     ;; Help and info
     (define-key org-agenda-mode-map "?" #'org-agenda-help)
     (define-key org-agenda-mode-map "h" #'org-agenda-help))
@@ -502,14 +513,14 @@
                                  "p" #'org-agenda-projects
                                  "r" #'org-agenda-routines
                                  "s" #'org-agenda-someday)
-     
+
      ;; Quick capture shortcuts
      "X" #'org-capture
      "X i" (lambda () (interactive) (org-capture nil "i"))
      "X p" (lambda () (interactive) (org-capture nil "p"))
      "X r" (lambda () (interactive) (org-capture nil "r"))
      "X s" (lambda () (interactive) (org-capture nil "s"))
-     
+
      ;; Quick file access
      "o i" (lambda () (interactive) (find-file "~/org/agenda/inbox.org"))
      "o p" (lambda () (interactive) (find-file "~/org/agenda/gtd.org"))
@@ -913,7 +924,7 @@
   (setq vterm-max-scrollback 10000)
   (setq vterm-kill-buffer-on-exit t))
 
-(after! vterm
+ (after! vterm
   (set-popup-rule! "*doom:vterm-popup:*"
     :size 0.30
     :vslot -4

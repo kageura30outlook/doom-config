@@ -76,7 +76,7 @@
 (package! org-modern)        ; Modern styling for org-mode
 (package! org-roam)          ; Networked note-taking inspired by Roam Research
 (package! org-roam-ui)       ; Web-based UI for org-roam
-
+(package! org-bullets)
 
 ;; Bibliography/citation frontend used in config.org
 (package! citar)
