@@ -197,26 +197,50 @@ _q_: quit
 ;; Color Coding:1 ends here
 
 ;; Load and configure MCP package if available locally
-(let* ((mcp-dir (expand-file-name "~/.doom.d/"))
+(let* ((mcp-dir (expand-file-name "~/.doom.d/mcp/"))
        (mcp-file (expand-file-name "mcp.el" mcp-dir)))
   (when (file-exists-p mcp-file)
     (add-to-list 'load-path mcp-dir)
     (use-package! mcp
       :after gptel
-      :custom
-      (mcp-hub-servers
-       '(("filesystem" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-filesystem" "/Users/Kageura/Documents/")))
-         ("fetch" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-fetch")))
-         ("memory" . (:command "npx" :args ("-y" "@pulsemcp/basic-memory")))
-         ("sequencethink" . (:command "npx" :args ("-y" "@arben-adm/mcp-sequential-thinking")))
-         ("git" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-github")))
-         ("python-sdk" . (:command "python3" :args ("-m" "mcp.server.fastmcp" "--spec" "python-sdk")))
-         ("puppeteer" . (:command "npx" :args ("-y" "@modelcontextprotocol/server-puppeteer")))
-         ("emacs" . (:command "bash" :args ("-c" "~/.config/doom/bin/doomscript ~/.config/doom/bin/emacs-mcp")))))
       :config
-      ;; Load the MCP hub component only if present, then start servers
-      (when (require 'mcp-hub nil 'noerror)
-        (add-hook 'after-init-hook #'mcp-hub-start-all-server)))))
+      (require 'mcp-hub)
+
+      ;; Correct MCP server list format
+      (setq mcp-hub-servers
+            '(("filesystem" "npx" ("-y" "@modelcontextprotocol/server-filesystem" "/Users/Kageura/Documents/"))
+              ("fetch" "npx" ("-y" "@modelcontextprotocol/server-fetch"))
+              ("memory" "npx" ("-y" "@pulsemcp/basic-memory"))
+              ("sequencethink" "npx" ("-y" "@arben-adm/mcp-sequential-thinking"))
+              ("git" "npx" ("-y" "@modelcontextprotocol/server-github"))
+              ("python-sdk" "python3" ("-m" "mcp.server.fastmcp" "--spec" "python-sdk"))
+              ("puppeteer" "npx" ("-y" "@modelcontextprotocol/server-puppeteer"))
+              ("emacs" "bash" ("-c" "~/.config/doom/bin/doomscript ~/.config/doom/bin/emacs-mcp"))))
+
+      ;; Start all servers after Emacs init
+      (add-hook 'after-init-hook #'mcp-hub-start-all-server))))
+
+(use-package! exec-path-from-shell
+  :config
+  (dolist (var '("OPENAI_API_KEY"))
+    (exec-path-from-shell-copy-env var))
+  (exec-path-from-shell-initialize))
+(setq gptel-api-key (getenv "OPENAI_API_KEY"))
+(use-package! gptel
+  :after mcp
+  :config
+  (require 'gptel-integrations) ;; Enable MCP integration
+
+  (setq gptel-model 'gpt-5-nano
+        gptel-backend
+        (gptel-make-openai
+         "OpenAI"
+         :key gptel-api-key  ;; This is the variable holding the key
+         :stream t
+         :models '(gpt-5-nano)))
+
+  ;; Auto-connect GPTel to MCP servers when starting a chat
+  (add-hook 'gptel-mode-hook #'gptel-mcp-connect))
 
 (setq mac-command-modifier      'super
       ns-command-modifier       'super
@@ -924,7 +948,7 @@ _q_: quit
   (setq vterm-max-scrollback 10000)
   (setq vterm-kill-buffer-on-exit t))
 
- (after! vterm
+(after! vterm
   (set-popup-rule! "*doom:vterm-popup:*"
     :size 0.30
     :vslot -4
@@ -954,18 +978,6 @@ _q_: quit
   ;; 例: PostgreSQLのパス設定など
   ;; (setenv "PATH" (concat "/usr/bin:" (getenv "PATH")))
   )
-
-(setq gptel-api-key (getenv "OPENAI_API_KEY"))
-
-(use-package! gptel
-  :config
-  (setq gptel-model 'o4-mini)
-  (setq gptel-backend
-        (gptel-make-openai
-         "OpenAI"
-         :key  #'gptel-api-key
-         :stream t
-         :models '(o4-mini))))
 
 (menu-bar-mode -1)
 

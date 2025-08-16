@@ -129,3 +129,5 @@
 (package! highlight-indent-guides)
 (package! beacon)
 (package! nyan-mode)
+(package! mcp)
+(package! exec-path-from-shell)
