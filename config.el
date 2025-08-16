@@ -1027,6 +1027,96 @@ _q_: quit
         ivy-count-format "(%d/%d) "
         enable-recursive-minibuffers t))
 
+;; Swiper config for Doom Emacs conventions
+
+;; Ensure swiper is installed (default in Doom)
+(use-package swiper
+  :after ivy
+  :defer t
+  :init
+  ;; Doom leader key conventions
+  (map!
+    :leader
+    :desc "Swiper"              "s s" #'swiper            ; search in current buffer
+    :desc "Swiper isearch"      "s S" #'swiper-isearch    ; incremental, buffer-local search
+    :desc "Swiper at point"     "s ." (lambda () (interactive) (swiper (thing-at-point 'symbol))) ; search symbol at point
+    :desc "Swiper region"       "s r" #'swiper-multi      ; search across multiple buffers/regions if available
+    :desc "List all searches"   "s l" #'swiper-all        ; search across all open buffers
+    )
+  :bind (
+    ;; Vim mode, normal/edit map for convenience
+    :map evil-normal-state-map
+    ("*" . swiper-isearch)      ; search word under cursor like Vim '*'
+    ("#" . (lambda () (interactive) (swiper (thing-at-point 'symbol)))) ; reverse search word under cursor
+    )
+  :config
+  ;; Optionally: keep persistent highlight after search
+  (setq swiper-goto-start-of-match t)
+)
+
+;; Optional: if you want counsel integration for file search, add this under `counsel`:
+(use-package counsel
+  :after ivy
+  :defer t
+  :init
+  (map!
+    :leader
+    :desc "Search files (counsel)" "s f" #'counsel-find-file
+    :desc "Search recentf"         "s F" #'counsel-recentf
+    :desc "Search git project"     "s p" #'counsel-git
+  )
+)
+
+;; Ivy-rich & all-the-icons
+(use-package ivy-rich
+  :after ivy
+  :init (ivy-rich-mode 1)
+  :config
+  (setcdr (assq t ivy-format-functions-alist)
+          #'ivy-format-function-line)
+
+  (use-package all-the-icons-ivy-rich
+    :after all-the-icons
+    :init (all-the-icons-ivy-rich-mode 1)
+    :config
+    (setq all-the-icons-ivy-rich-icon-mapping
+          (let ((default (copy-tree all-the-icons-ivy-rich-icon-mapping)))
+            ;; Change Gopher -> "<>" icon in orange (from monokai palette)
+            (setf (alist-get 'gopher default)
+                  (all-the-icons-octicon "code" :height 0.9 :v-adjust 0.0 :face '(:foreground "#fd971f"))) ;; Monokai orange
+            default))
+    )
+)
+
+;; Ivy UI & Cursor
+(use-package ivy
+  :diminish
+  :bind (("C-c C-r" . ivy-resume)
+         ("C-x b"   . ivy-switch-buffer))
+  :custom
+  (ivy-use-virtual-buffers t)
+  (ivy-count-format "(%d/%d) ")
+  (ivy-wrap t)
+  (enable-recursive-minibuffers t)
+  (ivy-format-function 'ivy-format-function-arrow)
+  (ivy-initial-inputs-alist nil)
+  :config
+  (setq ivy-re-builders-alist
+        '((t . ivy--regex-plus)))
+  ;; Monokai themed cursor highlight
+  (defface ivy-current-match
+    '((t (:background "#282828" :foreground "#e6db74" :weight bold))) ; darkest bg, monokai yellow
+    "Ivy current match face for Monokai Ristretto.")
+  (set-face-attribute 'ivy-current-match nil
+                      :background "#282828"   ; Monokai background
+                      :foreground "#e6db74"  ; Monokai yellow
+                      :weight 'bold)
+  ;; Arrow indicator color (active line)
+  (defface ivy-arrow
+    '((t (:foreground "#a6e22e")))   ; Monokai green
+    "Ivy arrow color for Monokai Ristretto.")
+)
+
 (defun config-org-auto-tangle ()
   (when (string-equal (buffer-file-name)
                       (expand-file-name "~/.doom.d/config.org"))
