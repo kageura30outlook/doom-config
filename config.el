@@ -258,8 +258,8 @@ Window Management:
   ;; Auto-connect GPTel to MCP servers when starting a chat
   (add-hook 'gptel-mode-hook #'gptel-mcp-connect))
 
-(setq mac-command-modifier      'super
-      ns-command-modifier       'super
+(setq mac-command-modifier      'meta
+      ns-command-modifier       'meta
       mac-option-modifier       'meta
       ns-option-modifier        'meta
       mac-left-option-modifier  'meta
@@ -276,7 +276,7 @@ Window Management:
 ;(custom-set-faces!
  ;'(font-lock-comment-face :slant italic)
 ;; '(font-lock-keyword-face :slant italic))
- 
+
 ;Doom:
 ;;
 ;; - `doom-font' -- the primary font to use
@@ -308,7 +308,7 @@ Window Management:
 ;; wasn't installed correctly. Font issues are rarely Doom issues!
 
 ;; Japanese and symbol font support (プラットフォーム対応)
-(setq doom-symbol-font 
+(setq doom-symbol-font
   (cond
    ((eq system-type 'darwin) (font-spec :family "Noto Sans JP"))
    ((eq system-type 'gnu/linux) (font-spec :family "Noto Sans CJK JP"))
@@ -660,7 +660,6 @@ Window Management:
   :custom
   (org-roam-directory "~/org/roam")
   (org-roam-db-location (expand-file-name "org-roam.db" doom-cache-dir))
-  (org-roam-completion-everywhere t)
   (org-roam-dailies-directory "daily/")
   (org-roam-node-display-template
    (concat "${title:*} "
@@ -1203,6 +1202,19 @@ Window Management:
   (imenu-list-size 30)
   :config
   (set-face-attribute 'imenu-list-entry-face-1 nil :foreground "#f1fa8c"))
+;; Assuming your leader key is SPC, bind peek commands under SPC l (for LSP)
+(after! lsp-ui
+  (map! :leader
+        :desc "Peek Definition" "l d" #'lsp-ui-peek-find-definitions
+        :desc "Peek References" "l r" #'lsp-ui-peek-find-references
+        :desc "Peek Jump Backward" "l b" #'lsp-ui-peek-jump-backward
+        :desc "Peek Jump Forward" "l f" #'lsp-ui-peek-jump-forward))
+
+(use-package volatile-highlights
+  :diminish
+  :hook (after-init . volatile-highlights-mode)
+  :custom-face
+  (vhl/default-face ((t (:foreground "#ff6188" :background "#3e1f28")))))
 
 (defun config-org-auto-tangle ()
   (when (string-equal (buffer-file-name)
