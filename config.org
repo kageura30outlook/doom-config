@@ -150,7 +150,6 @@ All code blocks here are tangled into config.el.
       :desc "Org Pomodoro" "o P" #'org-pomodoro)
 #+end_src
 
-
 * Org Agenda Time Grid
 #+begin_src emacs-lisp
 (after! org-agenda
@@ -177,16 +176,16 @@ All code blocks here are tangled into config.el.
         which-key-popup-type 'side-window))
 #+end_src
 
-* Hydra Configuration
+* Hydra and ace-window configuration
 
 #+begin_src emacs-lisp
 (defhydra hydra-window (:hint nil)
   "
 Window Management:
-_n_: next window    _p_: previous window
-_v_: split vertical _s_: split horizontal
-_d_: delete window  _m_: maximize window
-_q_: quit
+*n*: next window    *p*: previous window
+*v*: split vertical *s*: split horizontal
+*d*: delete window  *m*: maximize window
+*q*: quit
 "
   ("n" other-window)
   ("p" (other-window -1))
@@ -198,6 +197,15 @@ _q_: quit
 
 (map! :leader
       :desc "Window Hydra" "w" #'hydra-window/body)
+
+(use-package ace-window
+  :custom
+  (aw-keys '(?j ?k ?l ?i ?o ?h ?y ?u ?p))
+  :custom-face
+  (aw-leading-char-face ((t (:height 4.0 :foreground "#f1fa8c"))))
+  :bind
+  (("C-c w" . hydra-window/body)    ;; bind hydra to C-c w
+   ("C-c a" . ace-window)))          ;; bind ace-window directly to C-c a
 #+end_src
 
 * Color Coding
@@ -248,30 +256,37 @@ _q_: quit
 
 * MCP Servers
 #+begin_src emacs-lisp
-(let* ((mcp-dir (expand-file-name "~/.doom.d/mcp/"))
-       (mcp-file (expand-file-name "mcp.el" mcp-dir)))
-  (when (file-exists-p mcp-file)
-    (add-to-list 'load-path mcp-dir)
-    (use-package! mcp
-      :after gptel
-      :config
-      (require 'mcp-hub)
-
-      ;; Corrected MCP server list format with keyword arguments
-      (setq mcp-hub-servers
-            '(("filesystem" :command "npx" :args ("-y" "@modelcontextprotocol/server-filesystem" "/Users/Kageura/Documents/"))
-              ("fetch" :command "npx" :args ("-y" "@modelcontextprotocol/server-fetch"))
-              ("memory" :command "npx" :args ("-y" "@pulsemcp/basic-memory"))
-              ("sequencethink" :command "npx" :args ("-y" "@arben-adm/mcp-sequential-thinking"))
-              ("git" :command "npx" :args ("-y" "@modelcontextprotocol/server-github"))
-              ("python-sdk" :command "python3" :args ("-m" "mcp.server.fastmcp" "--spec" "python-sdk"))
-              ("puppeteer" :command "npx" :args ("-y" "@modelcontextprotocol/server-puppeteer"))
-              ("emacs" :command "bash" :args ("-c" "~/.config/doom/bin/doomscript ~/.config/doom/bin/emacs-mcp"))))
-
-      ;; Start all servers after Emacs init
-      (add-hook 'after-init-hook #'mcp-hub-start-all-server))))
+;(let* ((mcp-dir (expand-file-name "~/.doom.d/mcp/"))
+;       (mcp-file (expand-file-name "mcp.el" mcp-dir)))
+;  (when (file-exists-p mcp-file)
+;    (add-to-list 'load-path mcp-dir)
+;    (use-package! mcp
+;      :after gptel
+;      :config
+;      (require 'mcp-hub)
+;
+;      (setq mcp-hub-servers
+;            '(("filesystem"
+;               :command "npx"
+;               :args ("-y" "@modelcontextprotocol/server-filesystem"
+;                      "/Users/Kageura/Documents"))
+;
+;              ("github"
+;               :command "npx"
+;               :args ("-y" "@modelcontextprotocol/server-github"))
+;
+;              ("playwright"
+;               :command "npx"
+;               :args ("-y" "@playwright/mcp"))
+;
+;
+;              ("emacs"
+;               :command "bash"
+;              :args ("-c" "~/.config/doom/bin/doomscript ~/.config/doom/bin/emacs-mcp"))
+;
+;      (add-hook 'after-init-hook #'mcp-hub-start-all-servers))))))
+;
 #+end_src
-
 * GPTel Setup
 #+begin_src emacs-lisp
 (use-package! exec-path-from-shell
@@ -1274,6 +1289,80 @@ Force ivy-mode to start early
 
 #+end_src
 
+* LSP mode
+#+begin_src emacs-lisp
+;; lsp-mode configuration
+(use-package lsp-mode
+  :init
+  (setq lsp-keymap-prefix "C-c l")
+  :hook
+  ((prog-mode . lsp-deferred))
+  (lsp-mode . lsp-enable-which-key-integration)
+  :commands (lsp lsp-deferred)
+  :custom
+  (lsp-auto-guess-root t)
+  (lsp-document-sync-method 'incremental)
+  (lsp-prefer-flymake nil)
+  (lsp-enable-snippet t)
+  (lsp-enable-imenu t)
+)
+
+;; lsp-ui for enhanced UI features
+(use-package lsp-ui
+  :after lsp-mode
+  :commands lsp-ui-mode
+  :custom
+  (lsp-ui-doc-enable t)
+  (lsp-ui-doc-header t)
+  (lsp-ui-doc-position 'top)
+  (lsp-ui-doc-max-width 150)
+  (lsp-ui-doc-max-height 30)
+  (lsp-ui-doc-use-childframe t)
+  (lsp-ui-doc-use-webkit t)
+  (lsp-ui-peek-enable t)
+  (lsp-ui-sideline-enable nil))
+
+;; company-mode for auto-completion
+(use-package company
+  :hook (prog-mode . company-mode)
+  :custom
+  (company-minimum-prefix-length 1) ; start completing after a single character
+  (company-idle-delay 0.1)           ; delay in seconds before suggestions pop up
+  (company-tooltip-align-annotations t) ; align annotations to the right tooltip border
+  (company-show-numbers t)           ; show numbers for quick selection
+  :bind
+  (:map company-active-map
+        ("<tab>" . company-complete-selection) ; tab completes selection
+        ("C-n" . company-select-next)
+        ("C-p" . company-select-previous))
+  )
+
+;; company-capf connects company with LSP capabilities for completion
+(use-package company-capf
+  :after company
+  :config
+  (add-to-list 'company-backends 'company-capf))
+
+;; flycheck for diagnostics
+(use-package flycheck
+  :hook (lsp-mode . flycheck-mode))
+
+;; which-key for command hints
+(use-package which-key
+  :config
+  (which-key-mode))
+
+;; imenu-list to show code outline
+(use-package imenu-list
+  :bind ("<f10>" . imenu-list-smart-toggle)
+  :custom
+  (imenu-list-focus-after-activation t)
+  (imenu-list-auto-resize t)
+  (imenu-list-size 30)
+  :config
+  (set-face-attribute 'imenu-list-entry-face-1 nil :foreground "#f1fa8c"))
+
+#+end_src
 * Auto tangle
 #+begin_src emacs-lisp
 (defun config-org-auto-tangle ()

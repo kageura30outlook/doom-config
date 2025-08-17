@@ -7,7 +7,7 @@
 (cl-defmethod seq-empty-p ((object symbol)) t)
 
 (setq fancy-splash-image "~/.doom.d/doom_hole.png")
-
+;;doom_hole.png is a image I found on the web thanks to:https://github.com/doomemacs/doomemacs/issues/2204
 
 ;; Provide a conservative default for any other unexpected types
 (with-eval-after-load 'seq
