@@ -196,7 +196,6 @@ _q_: quit
   :after tree-sitter)
 ;; Color Coding:1 ends here
 
-;; Load and configure MCP package if available locally
 (let* ((mcp-dir (expand-file-name "~/.doom.d/mcp/"))
        (mcp-file (expand-file-name "mcp.el" mcp-dir)))
   (when (file-exists-p mcp-file)
@@ -206,16 +205,16 @@ _q_: quit
       :config
       (require 'mcp-hub)
 
-      ;; Correct MCP server list format
+      ;; Corrected MCP server list format with keyword arguments
       (setq mcp-hub-servers
-            '(("filesystem" "npx" ("-y" "@modelcontextprotocol/server-filesystem" "/Users/Kageura/Documents/"))
-              ("fetch" "npx" ("-y" "@modelcontextprotocol/server-fetch"))
-              ("memory" "npx" ("-y" "@pulsemcp/basic-memory"))
-              ("sequencethink" "npx" ("-y" "@arben-adm/mcp-sequential-thinking"))
-              ("git" "npx" ("-y" "@modelcontextprotocol/server-github"))
-              ("python-sdk" "python3" ("-m" "mcp.server.fastmcp" "--spec" "python-sdk"))
-              ("puppeteer" "npx" ("-y" "@modelcontextprotocol/server-puppeteer"))
-              ("emacs" "bash" ("-c" "~/.config/doom/bin/doomscript ~/.config/doom/bin/emacs-mcp"))))
+            '(("filesystem" :command "npx" :args ("-y" "@modelcontextprotocol/server-filesystem" "/Users/Kageura/Documents/"))
+              ("fetch" :command "npx" :args ("-y" "@modelcontextprotocol/server-fetch"))
+              ("memory" :command "npx" :args ("-y" "@pulsemcp/basic-memory"))
+              ("sequencethink" :command "npx" :args ("-y" "@arben-adm/mcp-sequential-thinking"))
+              ("git" :command "npx" :args ("-y" "@modelcontextprotocol/server-github"))
+              ("python-sdk" :command "python3" :args ("-m" "mcp.server.fastmcp" "--spec" "python-sdk"))
+              ("puppeteer" :command "npx" :args ("-y" "@modelcontextprotocol/server-puppeteer"))
+              ("emacs" :command "bash" :args ("-c" "~/.config/doom/bin/doomscript ~/.config/doom/bin/emacs-mcp"))))
 
       ;; Start all servers after Emacs init
       (add-hook 'after-init-hook #'mcp-hub-start-all-server))))

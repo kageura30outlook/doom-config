@@ -6,6 +6,9 @@
 (require 'seq)
 (cl-defmethod seq-empty-p ((object symbol)) t)
 
+(setq fancy-splash-image "~/.doom.d/doom_hole.png")
+
+
 ;; Provide a conservative default for any other unexpected types
 (with-eval-after-load 'seq
   (cl-defmethod seq-empty-p ((object t))
@@ -48,7 +51,7 @@
        ;;helm              ; the *other* search engine for love and life
        ;;ido               ; the other *other* search engine...
        ivy               ; a search engine for love and life
-       (vertico +childframe)           ; the search engine of the future
+       ;;(vertico +childframe)           ; the search engine of the future
 
        :ui
        ;;deft              ; notational velocity for Emacs
