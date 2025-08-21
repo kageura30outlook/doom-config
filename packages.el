@@ -137,3 +137,8 @@
 (package! lsp-mode)
 (package! company)
 (package! imenu-list)
+(package! all-the-icons)
+(package! volatile-highlights)
+(package! all-the-icons-ivy-rich)
+(package! all-the-icons-dired)
+(package! minimap)

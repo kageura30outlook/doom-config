@@ -117,6 +117,42 @@
 (map! :leader
       :desc "Org Pomodoro" "o P" #'org-pomodoro)
 
+;; Ivy-rich & all-the-icons
+
+(use-package! all-the-icons
+  :defer t
+  :init
+  ;; Install fonts automatically if needed
+  (unless (member "all-the-icons" (font-family-list))
+    (all-the-icons-install-fonts t)))
+
+;; Enable all-the-icons in Dired (file manager), if desired
+(use-package! all-the-icons-dired
+  :hook (dired-mode . all-the-icons-dired-mode))
+
+;; Enable all-the-icons in IBuffer (buffer list), if installed
+(use-package! all-the-icons-ibuffer
+  :hook (ibuffer-mode . all-the-icons-ibuffer-mode))
+
+;; Enable all-the-icons in Ivy-rich or Counsel if you use Ivy
+(use-package! ivy-rich
+  :after ivy
+  :init
+  (ivy-rich-mode 1))
+
+(use-package ivy-rich
+  :after ivy
+  :init (ivy-rich-mode 1)
+  :config
+  (setcdr (assq t ivy-format-functions-alist)
+          #'ivy-format-function-line)
+
+  (use-package all-the-icons-ivy-rich
+    :after all-the-icons
+    :init (all-the-icons-ivy-rich-mode 1)
+    )
+)
+
 (after! org-agenda
   ;; Set the grid layout
   (setq org-agenda-time-grid
@@ -137,6 +173,14 @@
         which-key-sort-order 'which-key-key-order-alpha
         which-key-popup-type 'side-window))
 
+(use-package ace-window
+  :custom
+  (aw-keys '(?j ?k ?l ?i ?o ?h ?y ?u ?p))
+  :custom-face
+  (aw-leading-char-face ((t (:height 4.0 :foreground "#f1fa8c"))))
+  :bind
+   ("C-c a" . ace-window))          ;; bind ace-window directly to C-c a
+
 (defhydra hydra-window (:hint nil)
   "
 Window Management:
@@ -145,7 +189,7 @@ Window Management:
 *d*: delete window  *m*: maximize window
 *q*: quit
 "
-  ("n" other-window)
+  ("n" ace-window)
   ("p" (other-window -1))
   ("v" split-window-right)
   ("s" split-window-below)
@@ -155,15 +199,6 @@ Window Management:
 
 (map! :leader
       :desc "Window Hydra" "w" #'hydra-window/body)
-
-(use-package ace-window
-  :custom
-  (aw-keys '(?j ?k ?l ?i ?o ?h ?y ?u ?p))
-  :custom-face
-  (aw-leading-char-face ((t (:height 4.0 :foreground "#f1fa8c"))))
-  :bind
-  (("C-c w" . hydra-window/body)    ;; bind hydra to C-c w
-   ("C-c a" . ace-window)))          ;; bind ace-window directly to C-c a
 
 ;; [[file:config.org::*Color Coding][Color Coding:1]]
 ; Color Coding — Doom Monokai Ristretto for Python
@@ -362,8 +397,6 @@ Window Management:
 (after! org (add-to-list 'org-latex-packages-alist '("" "mathrsfs" t)))
 
 ;; プラットフォーム依存のbibliographyパス
-(setq! bibtex-completion-bibliography
-  (list (expand-file-name "bibliography.bib" "~")))
 (setq! citar-bibliography
   (list (expand-file-name "bibliography.bib" "~")))
 
@@ -529,6 +562,7 @@ Window Management:
     (define-key org-agenda-mode-map "r" #'org-agenda-refile)
 
     ;; Export and sharing
+
     (define-key org-agenda-mode-map "e" #'org-agenda-export)
     (define-key org-agenda-mode-map "E" #'org-agenda-export)
 
@@ -1082,27 +1116,6 @@ Window Management:
   )
 )
 
-;; Ivy-rich & all-the-icons
-(use-package ivy-rich
-  :after ivy
-  :init (ivy-rich-mode 1)
-  :config
-  (setcdr (assq t ivy-format-functions-alist)
-          #'ivy-format-function-line)
-
-  (use-package all-the-icons-ivy-rich
-    :after all-the-icons
-    :init (all-the-icons-ivy-rich-mode 1)
-    :config
-    (setq all-the-icons-ivy-rich-icon-mapping
-          (let ((default (copy-tree all-the-icons-ivy-rich-icon-mapping)))
-            ;; Change Gopher -> "<>" icon in orange (from monokai palette)
-            (setf (alist-get 'gopher default)
-                  (all-the-icons-octicon "code" :height 0.9 :v-adjust 0.0 :face '(:foreground "#fd971f"))) ;; Monokai orange
-            default))
-    )
-)
-
 ;; Ivy UI & Cursor
 (use-package ivy
   :diminish
@@ -1131,6 +1144,13 @@ Window Management:
     '((t (:foreground "#a6e22e")))   ; Monokai green
     "Ivy arrow color for Monokai Ristretto.")
 )
+
+(after! ivy
+  (setq ivy-use-virtual-buffers nil      ;; Disable virtual buffers
+        ivy-use-selectable-prompt nil    ;; Stop using Ivy for completion
+        ivy-re-builders-alist            ;; Use default completion method
+        '((t . ivy--regex-plus)))
+  (ivy-mode -1))                          ;; Disable ivy-mode if still running
 
 ;; lsp-mode configuration
 (use-package lsp-mode
@@ -1194,6 +1214,7 @@ Window Management:
   (which-key-mode))
 
 ;; imenu-list to show code outline
+;; Assuming your leader key is SPC, bind peek commands under SPC l (for LSP)
 (use-package imenu-list
   :bind ("<f10>" . imenu-list-smart-toggle)
   :custom
@@ -1201,8 +1222,39 @@ Window Management:
   (imenu-list-auto-resize t)
   (imenu-list-size 30)
   :config
-  (set-face-attribute 'imenu-list-entry-face-1 nil :foreground "#f1fa8c"))
-;; Assuming your leader key is SPC, bind peek commands under SPC l (for LSP)
+  ;; Enable all-the-icons in imenu-list
+  (use-package all-the-icons)
+  (setq imenu-list-use-icons t)
+
+  ;; Doom Monokai Ristretto color palette (picked from theme)
+  (let ((yellow   "#e6db74")
+        (orange   "#fd971f")
+        (purple   "#ae81ff")
+        (green    "#a6e22e")
+        (blue     "#66d9ef")
+        (red      "#f92672")
+        (fg       "#f8f8f2"))
+
+    ;; Level 1 (top-level functions, classes)
+    (set-face-attribute 'imenu-list-entry-face-0 nil
+                        :foreground orange :weight 'bold)
+
+    ;; Level 2 (methods, fields)
+    (set-face-attribute 'imenu-list-entry-face-1 nil
+                        :foreground yellow)
+
+    ;; Level 3 (variables, local scope)
+    (set-face-attribute 'imenu-list-entry-face-2 nil
+                        :foreground green)
+
+    ;; Level 4 (nested structures, minor entries)
+    (set-face-attribute 'imenu-list-entry-face-3 nil
+                        :foreground blue)
+
+    ;; Default face fallback
+    (set-face-attribute 'imenu-list-entry-face nil
+                        :foreground fg)))
+
 (after! lsp-ui
   (map! :leader
         :desc "Peek Definition" "l d" #'lsp-ui-peek-find-definitions
@@ -1215,6 +1267,24 @@ Window Management:
   :hook (after-init . volatile-highlights-mode)
   :custom-face
   (vhl/default-face ((t (:foreground "#ff6188" :background "#3e1f28")))))
+
+(use-package minimap
+  :ensure t
+  :commands (minimap-mode)
+  :custom
+  (minimap-major-modes '(prog-mode))
+  (minimap-window-location 'right)
+  (minimap-update-delay 0.2)
+  (minimap-minimum-width 20)
+  :config
+  (defun ladicle/toggle-minimap ()
+    "Toggle the minimap sidebar."
+    (interactive)
+    (minimap-mode 'toggle))
+
+  (map! :leader
+        :desc "Toggle minimap"
+        "m p" #'ladicle/toggle-minimap))
 
 (defun config-org-auto-tangle ()
   (when (string-equal (buffer-file-name)

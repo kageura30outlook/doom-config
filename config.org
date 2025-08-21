@@ -63,6 +63,10 @@ All code blocks here are tangled into config.el.
     (doom-themes-org-config))
 
 #+end_src
+
+#+RESULTS:
+: t
+
 * UI upgrade
 :PROPERTIES:
 :header-args: :eval yes :tangle yes
@@ -150,6 +154,45 @@ All code blocks here are tangled into config.el.
       :desc "Org Pomodoro" "o P" #'org-pomodoro)
 #+end_src
 
+* All the icons
+#+begin_src emacs-lisp
+;; Ivy-rich & all-the-icons
+
+(use-package! all-the-icons
+  :defer t
+  :init
+  ;; Install fonts automatically if needed
+  (unless (member "all-the-icons" (font-family-list))
+    (all-the-icons-install-fonts t)))
+
+;; Enable all-the-icons in Dired (file manager), if desired
+(use-package! all-the-icons-dired
+  :hook (dired-mode . all-the-icons-dired-mode))
+
+;; Enable all-the-icons in IBuffer (buffer list), if installed
+(use-package! all-the-icons-ibuffer
+  :hook (ibuffer-mode . all-the-icons-ibuffer-mode))
+
+;; Enable all-the-icons in Ivy-rich or Counsel if you use Ivy
+(use-package! ivy-rich
+  :after ivy
+  :init
+  (ivy-rich-mode 1))
+
+(use-package ivy-rich
+  :after ivy
+  :init (ivy-rich-mode 1)
+  :config
+  (setcdr (assq t ivy-format-functions-alist)
+          #'ivy-format-function-line)
+
+  (use-package all-the-icons-ivy-rich
+    :after all-the-icons
+    :init (all-the-icons-ivy-rich-mode 1)
+    )
+)
+
+#+end_src
 * Org Agenda Time Grid
 #+begin_src emacs-lisp
 (after! org-agenda
@@ -179,15 +222,24 @@ All code blocks here are tangled into config.el.
 * Hydra and ace-window configuration
 
 #+begin_src emacs-lisp
+
+(use-package ace-window
+  :custom
+  (aw-keys '(?j ?k ?l ?i ?o ?h ?y ?u ?p))
+  :custom-face
+  (aw-leading-char-face ((t (:height 4.0 :foreground "#f1fa8c"))))
+  :bind
+   ("C-c a" . ace-window))          ;; bind ace-window directly to C-c a
+
 (defhydra hydra-window (:hint nil)
   "
 Window Management:
-*n*: next window    *p*: previous window
-*v*: split vertical *s*: split horizontal
-*d*: delete window  *m*: maximize window
-*q*: quit
+,*n*: next window    *p*: previous window
+,*v*: split vertical *s*: split horizontal
+,*d*: delete window  *m*: maximize window
+,*q*: quit
 "
-  ("n" other-window)
+  ("n" ace-window)
   ("p" (other-window -1))
   ("v" split-window-right)
   ("s" split-window-below)
@@ -198,14 +250,6 @@ Window Management:
 (map! :leader
       :desc "Window Hydra" "w" #'hydra-window/body)
 
-(use-package ace-window
-  :custom
-  (aw-keys '(?j ?k ?l ?i ?o ?h ?y ?u ?p))
-  :custom-face
-  (aw-leading-char-face ((t (:height 4.0 :foreground "#f1fa8c"))))
-  :bind
-  (("C-c w" . hydra-window/body)    ;; bind hydra to C-c w
-   ("C-c a" . ace-window)))          ;; bind ace-window directly to C-c a
 #+end_src
 
 * Color Coding
@@ -443,8 +487,6 @@ Basic org-mode setup:
 (after! org (add-to-list 'org-latex-packages-alist '("" "mathrsfs" t)))
 
 ;; プラットフォーム依存のbibliographyパス
-(setq! bibtex-completion-bibliography
-  (list (expand-file-name "bibliography.bib" "~")))
 (setq! citar-bibliography
   (list (expand-file-name "bibliography.bib" "~")))
 #+end_src
@@ -617,6 +659,7 @@ Settings for managing my schedule and TODOs with org agenda + org-roam
     (define-key org-agenda-mode-map "r" #'org-agenda-refile)
 
     ;; Export and sharing
+
     (define-key org-agenda-mode-map "e" #'org-agenda-export)
     (define-key org-agenda-mode-map "E" #'org-agenda-export)
 
@@ -1230,30 +1273,6 @@ Force ivy-mode to start early
 )
 
 #+end_src
-* All the icons
-#+begin_src emacs-lisp
-;; Ivy-rich & all-the-icons
-(use-package ivy-rich
-  :after ivy
-  :init (ivy-rich-mode 1)
-  :config
-  (setcdr (assq t ivy-format-functions-alist)
-          #'ivy-format-function-line)
-
-  (use-package all-the-icons-ivy-rich
-    :after all-the-icons
-    :init (all-the-icons-ivy-rich-mode 1)
-    :config
-    (setq all-the-icons-ivy-rich-icon-mapping
-          (let ((default (copy-tree all-the-icons-ivy-rich-icon-mapping)))
-            ;; Change Gopher -> "<>" icon in orange (from monokai palette)
-            (setf (alist-get 'gopher default)
-                  (all-the-icons-octicon "code" :height 0.9 :v-adjust 0.0 :face '(:foreground "#fd971f"))) ;; Monokai orange
-            default))
-    )
-)
-
-#+end_src
 * ivy rich config
 #+begin_src emacs-lisp
 ;; Ivy UI & Cursor
@@ -1285,9 +1304,16 @@ Force ivy-mode to start early
     "Ivy arrow color for Monokai Ristretto.")
 )
 
+(after! ivy
+  (setq ivy-use-virtual-buffers nil      ;; Disable virtual buffers
+        ivy-use-selectable-prompt nil    ;; Stop using Ivy for completion
+        ivy-re-builders-alist            ;; Use default completion method
+        '((t . ivy--regex-plus)))
+  (ivy-mode -1))                          ;; Disable ivy-mode if still running
+
 #+end_src
 
-* LSP mode
+* Lsp mode
 #+begin_src emacs-lisp
 ;; lsp-mode configuration
 (use-package lsp-mode
@@ -1351,6 +1377,7 @@ Force ivy-mode to start early
   (which-key-mode))
 
 ;; imenu-list to show code outline
+;; Assuming your leader key is SPC, bind peek commands under SPC l (for LSP)
 (use-package imenu-list
   :bind ("<f10>" . imenu-list-smart-toggle)
   :custom
@@ -1358,8 +1385,39 @@ Force ivy-mode to start early
   (imenu-list-auto-resize t)
   (imenu-list-size 30)
   :config
-  (set-face-attribute 'imenu-list-entry-face-1 nil :foreground "#f1fa8c"))
-;; Assuming your leader key is SPC, bind peek commands under SPC l (for LSP)
+  ;; Enable all-the-icons in imenu-list
+  (use-package all-the-icons)
+  (setq imenu-list-use-icons t)
+
+  ;; Doom Monokai Ristretto color palette (picked from theme)
+  (let ((yellow   "#e6db74")
+        (orange   "#fd971f")
+        (purple   "#ae81ff")
+        (green    "#a6e22e")
+        (blue     "#66d9ef")
+        (red      "#f92672")
+        (fg       "#f8f8f2"))
+
+    ;; Level 1 (top-level functions, classes)
+    (set-face-attribute 'imenu-list-entry-face-0 nil
+                        :foreground orange :weight 'bold)
+
+    ;; Level 2 (methods, fields)
+    (set-face-attribute 'imenu-list-entry-face-1 nil
+                        :foreground yellow)
+
+    ;; Level 3 (variables, local scope)
+    (set-face-attribute 'imenu-list-entry-face-2 nil
+                        :foreground green)
+
+    ;; Level 4 (nested structures, minor entries)
+    (set-face-attribute 'imenu-list-entry-face-3 nil
+                        :foreground blue)
+
+    ;; Default face fallback
+    (set-face-attribute 'imenu-list-entry-face nil
+                        :foreground fg)))
+
 (after! lsp-ui
   (map! :leader
         :desc "Peek Definition" "l d" #'lsp-ui-peek-find-definitions
@@ -1368,6 +1426,7 @@ Force ivy-mode to start early
         :desc "Peek Jump Forward" "l f" #'lsp-ui-peek-jump-forward))
 
 #+end_src
+
 * Volatile hilight config
 #+begin_src emacs-lisp
 (use-package volatile-highlights
@@ -1376,6 +1435,30 @@ Force ivy-mode to start early
   :custom-face
   (vhl/default-face ((t (:foreground "#ff6188" :background "#3e1f28")))))
 #+end_src
+
+* minimap config
+#+begin_src emacs-lisp
+(use-package minimap
+  :ensure t
+  :commands (minimap-mode)
+  :custom
+  (minimap-major-modes '(prog-mode))
+  (minimap-window-location 'right)
+  (minimap-update-delay 0.2)
+  (minimap-minimum-width 20)
+  :config
+  (defun ladicle/toggle-minimap ()
+    "Toggle the minimap sidebar."
+    (interactive)
+    (minimap-mode 'toggle))
+
+  (map! :leader
+        :desc "Toggle minimap"
+        "m p" #'ladicle/toggle-minimap))
+#+end_src
+
+#+RESULTS:
+
 * Auto tangle
 #+begin_src emacs-lisp
 (defun config-org-auto-tangle ()
@@ -1386,3 +1469,32 @@ Force ivy-mode to start early
 (add-hook 'after-save-hook #'config-org-auto-tangle)
 
 #+end_src
+* Keybind notes
+describe what each keybindings does.
+
+
+
+Here's a summary of keybindings in your Doom Emacs configuration along with their descriptions:
+
+- *SPC o P*: Org Pomodoro - Start a Pomodoro timer in Org mode.
+- *SPC w*: Window Hydra - Opens a hydra for window management.
+  - *n*: Next window.
+  - *p*: Previous window.
+  - *v*: Split vertically.
+  - *s*: Split horizontally.
+  - *d*: Delete window.
+  - *m*: Maximize window.
+- *SPC if*: Insert file name - Insert the selected file name at the current point.
+- *SPC ir*: Insert relative file name - Insert the relative filename of the selected file.
+- *SPC d p*: Toggle peep-dired-mode - Enter peep mode in Dired.
+- *SPC c g*: Run GPTel - Launch the GPTel command interface.
+- *SPC m g*: GPTel menu - Open the GPTel menu.
+- *SPC r g*: GPTel rewrite - Rewrite command in GPTel.
+- *SPC s g*: GPT chat - Send a chat message in GPTel.
+- *SPC o t*: Toggle vterm popup - Open or close an inline vterm popup.
+- *SPC o T*: Open inline vterm - Open a new inline vterm in the current buffer.
+- *SPC X*: Quick access to Org agenda - Open the Org agenda.
+- *SPC a*: Toggle agend commands - Access different agenda views (day, week, month, etc.).
+- *SPC n f*: Find node - Look up notes in Org-roam.
+- *SPC n i*: Insert node - Insert a note in Org-roam.
+- *SPC n d n*: Capture today's daily note - Create a new daily note.
