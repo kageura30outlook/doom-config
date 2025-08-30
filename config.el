@@ -997,7 +997,7 @@ Window Management:
   (setq vterm-max-scrollback 10000)
   (setq vterm-kill-buffer-on-exit t))
 
-(after! vterm
+ (after! vterm
   (set-popup-rule! "*doom:vterm-popup:*"
     :size 0.30
     :vslot -4
